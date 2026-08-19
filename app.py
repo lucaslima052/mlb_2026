@@ -308,9 +308,9 @@ HTML_TEMPLATE = """
             color: #f1f5f9;
             line-height: 1.4;
         }
-        .favorable { color: #4ade80; font-weight: 600; margin-left: 6px; }
-        .unfavorable { color: #f87171; font-weight: 600; margin-left: 6px; }
-        .upcoming { color: #ffffff; font-weight: 600; margin-left: 6px; }
+        .favorable { color: #4ade80; font-weight: 600; }
+        .unfavorable { color: #f87171; font-weight: 600; }
+        .upcoming { color: #ffffff; font-weight: 600; }
         .top-three { font-weight: 700; color: #ffffff; }
         .highlight-jays { font-weight: 800; color: #38bdf8; }
         .highlight-leader { font-weight: 700; color: #ffffff; }
