@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify
 import requests
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -417,6 +417,10 @@ def manifest():
         "theme_color": "#0f172a",
         "icons": []
     }
+
+@app.route("/api/data")
+def api_data():
+    return jsonify(get_data_dict())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
