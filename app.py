@@ -383,7 +383,8 @@ HTML_TEMPLATE = """
                     <div class="game">
                         <!-- 'Blue Jays' text replaced dynamically with the highlight CSS class -->
                         <div><strong>{{ g.matchup | replace('Blue Jays', '<span class="highlight-jays">Blue Jays</span>') | safe }}</strong> ({{ g.status }})</div>
-                        <div>Root for: <strong>{{ g.desired | replace('Blue Jays', '<span class="highlight-jays">Blue Jays</span>') | safe }}</strong> <span class="{% if 'Favorable' in g.result %}favorable{% elif 'Unfavorable' in g.result %}unfavorable{% else %}upcoming{% endif %}">— {{ g.result }}</span></div>
+                        <div>Root for: <strong>{{ g.desired | replace('Blue Jays', '<span class="highlight-jays">Blue Jays</span>') | safe }}</strong> 
+                            <span class="{% if 'Favorable' in g.result %}favorable{% elif 'Unfavorable' in g.result %}unfavorable{% else %}upcoming{% endif %}">— {{ g.result }}</span>
                         </div>
                     </div>
                     {% endfor %}
