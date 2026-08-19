@@ -383,7 +383,7 @@ HTML_TEMPLATE = """
                     <div class="game">
                         <div><strong>{{ g.matchup }}</strong> ({{ g.status }})</div>
                         <div>Root for: <strong>{{ g.desired }}</strong>
-                            <span class="{% if 'Favorable' in g.result %}favorable{% elif 'Unfavorable' in g.result %}unfavorable{% else %}upcoming{% endif %}">— {{ g.result }}</span>
+                            <span class="{% if 'Favorable' in g.result %}favorable{% elif 'Unfavorable' in g.result %}unfavorable{% else %}upcoming{% endif %}"> — {{ g.result }}</span>
                         </div>
                     </div>
                     {% endfor %}
