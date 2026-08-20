@@ -172,14 +172,14 @@ def get_data_dict():
                     raw_game_date = g.get('gameDate')
 
                     status_code = g['status'].get('abstractGameState')
-                    if status_code == 'Live':
+                    if status_code == 'Live' and status_track != 'Warmup':
                         linescore = g.get('linescore', {})
                         current_inning = linescore.get('currentInning', '')
                         inning_half = linescore.get('inningHalf', '')
                         outs = linescore.get('outs', 0)
                         half_symbol = "▲" if inning_half == "Top" else "▼"
                         status = f"{half_symbol}{current_inning}th - {outs} outs"
-                    elif raw_game_date and status_track in ['Scheduled', 'Pre-Game']:
+                    elif raw_game_date and status_track in ['Scheduled', 'Pre-Game', 'Warmup']:
                         utc_dt = datetime.strptime(raw_game_date, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=ZoneInfo("UTC"))
                         et_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
                         status = et_dt.strftime("%H:%M ET")
@@ -201,7 +201,7 @@ def get_data_dict():
                         if status_track in ['Final', 'Game Over']:
                             winner = away_full if int(a_score) > int(h_score) else home_full
                             result = "✅ Favorable" if winner == desired_full else "❌ Unfavorable"
-                        elif status_track in ['In Progress', 'Live', 'Warmup']:
+                        elif status_track in ['In Progress', 'Live']:
                             winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(a_score) else None
                             if winner == desired_full:
                                 result = "🟢 Leading (Favorable)"
