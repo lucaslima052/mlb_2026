@@ -200,7 +200,7 @@ def get_data_dict():
                         desired = get_nickname(desired_full)
                         if status_track in ['Final', 'Game Over']:
                             winner = away_full if int(a_score) > int(h_score) else home_full
-                            result = "✅ Favorable" if winner == desired_full else "❌ Unfavorable"
+                            result = "✅ Won (Favorable)" if winner == desired_full else "❌ Lost (Unfavorable)"
                         elif status_track in ['In Progress', 'Live']:
                             winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(a_score) else None
                             if winner == desired_full:
