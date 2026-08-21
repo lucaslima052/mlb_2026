@@ -54,7 +54,7 @@ def get_data_dict():
     current_year = datetime.today().year
 
     # 4 AM ET Rollover Check (Explicitly bound to Eastern Time)
-    now_et = datetime.now(ZoneInfo("America/New_York"))
+    now = datetime.now(ZoneInfo("America/New_York"))
     if now.hour < 4:
         target_date = now - timedelta(days=1)
     else:
