@@ -197,17 +197,12 @@ def get_data_dict():
                         desired_full = away_full
                     elif away_full in rankings_map:
                         desired_full = home_full
-
-elif home_full in leaders_ranking and away_full in leaders_ranking:
-
-#desired_full = home_full if (leaders_ranking[home_full] > leaders_ranking[away_full]) else away_full
-
+                    elif home_full in leaders_ranking and away_full in leaders_ranking:
+desired_full = home_full if (leaders_ranking[home_full] > leaders_ranking[away_full]) else away_full
+#desired_full = away_full
+                    elif home_full in leaders_ranking:
 desired_full = away_full
-
-elif home_full in leaders_ranking:
-desired_full = away_full
-
-elif away_full in leaders_ranking:
+                    elif away_full in leaders_ranking:
 desired_full = home_full
                         
                     if desired_full:
