@@ -12,7 +12,7 @@ HEADERS = {
 TRACKED_TEAMS = [
     "New York Yankees", "Boston Red Sox", "Texas Rangers", 
     "Baltimore Orioles", "Detroit Tigers", "Minnesota Twins", 
-    "Cleveland Guardians", "Seattle Mariners", "Toronto Blue Jays"
+    "Cleveland Guardians", "Seattle Mariners", "Toronto Blue Jays", "Houston Astros"
 ]
 
 OUT_OF_CONTENTION_TEAMS = [
@@ -37,7 +37,8 @@ def normalize_team_name(api_name):
         "Astros": "Houston Astros", "Houston Astros": "Houston Astros",
         "Indians": "Cleveland Guardians",
         "Rays": "Tampa Bay Rays", "Tampa Bay Rays": "Tampa Bay Rays",
-        "White Sox": "Chicago White Sox", "Chicago White Sox": "Chicago White Sox" 
+        "White Sox": "Chicago White Sox", "Chicago White Sox": "Chicago White Sox",
+        "Astros": "Houston Astros", "Houston Astros", "Houston Astros"
     }
     return mapping.get(api_name, api_name)
 
