@@ -37,8 +37,7 @@ def normalize_team_name(api_name):
         "Astros": "Houston Astros", "Houston Astros": "Houston Astros",
         "Indians": "Cleveland Guardians",
         "Rays": "Tampa Bay Rays", "Tampa Bay Rays": "Tampa Bay Rays",
-        "White Sox": "Chicago White Sox", "Chicago White Sox": "Chicago White Sox",
-        "Astros": "Houston Astros", "Houston Astros", "Houston Astros"
+        "White Sox": "Chicago White Sox", "Chicago White Sox": "Chicago White Sox"
     }
     return mapping.get(api_name, api_name)
 
