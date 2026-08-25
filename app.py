@@ -195,9 +195,12 @@ def get_data_dict():
                         desired_full = away_full
                     elif away_full in rankings_map:
                         desired_full = home_full
+
 elif home_full in division_leaders and away_full in division_leaders:
 
-desired_full = home_full if (division_leaders[home_full].get('rank') > division_leaders[away_full].get('rank')) else away_full
+#desired_full = home_full if (division_leaders[home_full].get('rank') > division_leaders[away_full].get('rank')) else away_full
+
+desired_full = away_full
 
 elif home_full in division_leaders:
 desired_full = away_full
