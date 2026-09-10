@@ -358,8 +358,6 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(255,255,255,0.08);
             color: #f1f5f9;
             line-height: 1.3;
-            font-size: 11px;
-            margin-bottom: 4px;
         }
         .favorable { color: #4ade80; font-weight: 600; }
         .unfavorable { color: #f87171; font-weight: 600; }
