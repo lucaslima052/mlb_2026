@@ -320,7 +320,7 @@ HTML_TEMPLATE = """
             flex-wrap: wrap;
         }
         .col-extra {
-            min-width: 275px;
+            min-width: 260px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
             display: flex;
@@ -328,7 +328,7 @@ HTML_TEMPLATE = """
             gap: 12px;
         }
         .col-standings {
-            min-width: 275px;
+            min-width: 260px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
         }
@@ -339,7 +339,7 @@ HTML_TEMPLATE = """
             flex-wrap: wrap;
         }
         .game-category-col {
-            min-width: 275px;
+            min-width: 260px;
             max-width: 275px;
             display: flex;
             flex-direction: column;
