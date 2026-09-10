@@ -311,7 +311,7 @@ HTML_TEMPLATE = """
             font-weight: 700;
             color: #facc15;
             margin: 0 0 6px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.15);
+            <!-- border-bottom: 1px solid rgba(255,255,255,0.15); -->
             padding-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
