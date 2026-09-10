@@ -96,6 +96,7 @@ def get_data_dict():
             
         team_categories = {}
         tracked_teams = set()
+        wc_ahead_teams = set()
         out_of_contention_teams = set()
         
         for name, stats in al_teams.items():
@@ -109,9 +110,12 @@ def get_data_dict():
                 if abs(diff) <= 3.0: 
                     team_categories[name] = 'critical'
                     tracked_teams.add(name)
-                elif diff > 3.0 or (diff < -3.0 and diff >= -6.0): 
+                elif abs(diff) <= 6.0: 
                     team_categories[name] = 'relevant'
                     tracked_teams.add(name)
+                elif diff > 6.0:
+                    team_categories[name] = 'ahead'
+                    wc_ahead_teams.add(name)
                 else: 
                     out_of_contention_teams.add(name)
                     
@@ -157,7 +161,7 @@ def get_data_dict():
                     rank_str = str(team_data.get('wildCardRank', '99'))
                     rank = int(rank_str) if rank_str.isdigit() else 99
                     
-                    if name in tracked_teams and not al_teams.get(name, {}).get('is_leader'):
+                    if (name in tracked_teams or name in wc_ahead_teams) and not al_teams.get(name, {}).get('is_leader'):
                         standings.append({
                             "team": name,
                             "rank": rank,
