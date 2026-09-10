@@ -434,7 +434,7 @@ HTML_TEMPLATE = """
 
             <!-- Critical Games Column -->
             <div class="game-category-col">
-                <div class="cat-header">Critical Games</div>
+                <div class="cat-header">Critical Games (WC3 ±3 games)</div>
                 {% if cList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -452,7 +452,7 @@ HTML_TEMPLATE = """
 
             <!-- Important Games Column -->
             <div class="game-category-col">
-                <div class="cat-header">Important Games</div>
+                <div class="cat-header">Important (Div. Leaders ±3 WC3)</div>
                 {% if iList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -470,7 +470,7 @@ HTML_TEMPLATE = """
 
             <!-- Other Relevant Games Column -->
             <div class="game-category-col">
-                <div class="cat-header">Other Relevant Games</div>
+                <div class="cat-header">Other Relevant (WC3 ±6 games)</div>
                 {% if rList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
