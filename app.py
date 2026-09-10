@@ -242,7 +242,7 @@ def get_data_dict():
                             winner = away_full if int(a_score) > int(h_score) else home_full
                             result = "✅ Won (Favorable)" if winner == desired_full else "❌ Lost (Unfavorable)"
                         elif status_track in ['In Progress', 'Live']:
-                            winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(a_score) else None
+                            winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(h_score) else None
                             if winner == desired_full:
                                 result = "🟢 Leading (Favorable)"
                             elif winner and winner != desired_full:
@@ -319,11 +319,8 @@ HTML_TEMPLATE = """
             align-items: flex-start;
             flex-wrap: wrap;
         }
-        /* Enforce uniform variable widths between 250px and 300px for all main columns */
         .col-extra {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
+            min-width: 260px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
             display: flex;
@@ -331,9 +328,7 @@ HTML_TEMPLATE = """
             gap: 12px;
         }
         .col-standings {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
+            min-width: 260px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
         }
@@ -342,12 +337,10 @@ HTML_TEMPLATE = """
             gap: 12px;
             align-items: flex-start;
             flex-wrap: wrap;
-            flex: 3 1 750px;
         }
         .game-category-col {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
+            min-width: 260px;
+            max-width: 275px;
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -365,8 +358,6 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(255,255,255,0.08);
             color: #f1f5f9;
             line-height: 1.3;
-            font-size: 11px;
-            margin-bottom: 4px;
         }
         .favorable { color: #4ade80; font-weight: 600; }
         .unfavorable { color: #f87171; font-weight: 600; }
@@ -377,7 +368,7 @@ HTML_TEMPLATE = """
 
         @media (max-width: 1024px) {
             .layout { flex-direction: column; }
-            .col-extra, .col-standings { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; max-width: 100%; }
+            .col-extra, .col-standings { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; }
         }
     </style>
 </head>
