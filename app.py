@@ -666,9 +666,9 @@ HTML_TEMPLATE = """
                                 {% else %}
                                     <span class="status-white">🤷 {{ tb.advantage }}</span>
                                 {% endif %}
+                                <div style="font-size: 10px; color: #94a3b8;">— {{ tb.detail | safe }}</div>
                             </span>
                         </div>
-                        <div style="font-size: 10px; color: #94a3b8;">— {{ tb.detail | safe }}</div>
                     </div>
                     {% endfor %}
                 {% else %}
@@ -696,9 +696,9 @@ HTML_TEMPLATE = """
                                 {% else %}
                                     <span class="status-white">🤷 {{ tb.advantage }}</span>
                                 {% endif %}
+                                <div style="font-size: 10px; color: #94a3b8;">— {{ tb.detail | safe }}</div>
                             </span>
                         </div>
-                        <div style="font-size: 10px; color: #94a3b8;">— {{ tb.detail | safe }}</div>
                     </div>
                     {% endfor %}
                 {% else %}
