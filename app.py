@@ -461,6 +461,7 @@ HTML_TEMPLATE = """
             display: flex;
             flex-direction: column;
             gap: 12px;
+            align-self: flex-start;
         }
         .col-standings {
             flex: 1 1 250px;
@@ -468,6 +469,7 @@ HTML_TEMPLATE = """
             max-width: 300px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
+            align-self: flex-start;
         }
         .col-games-container {
             display: flex;
@@ -477,6 +479,7 @@ HTML_TEMPLATE = """
             flex: 3 1 750px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
+            align-self: flex-start;
         }
         .game-category-col {
             flex: 1 1 250px;
@@ -485,6 +488,7 @@ HTML_TEMPLATE = """
             display: flex;
             flex-direction: column;
             gap: 6px;
+            align-self: flex-start;
         }
         .tiebreaker-col {
             flex: 1 1 250px;
@@ -495,6 +499,7 @@ HTML_TEMPLATE = """
             gap: 6px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 5px;
+            align-self: flex-start;
         }
         .tiebreaker-box {
             background: rgba(255, 255, 255, 0.04);
@@ -503,6 +508,7 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(255,255,255,0.08);
             display: flex;
             flex-direction: column;
+            gap: 4px
         }
         .row {
             display: flex;
