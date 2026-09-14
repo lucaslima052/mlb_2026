@@ -451,46 +451,19 @@ HTML_TEMPLATE = """
             gap: 20px;
             align-items: start;
         }
-        .col-extra {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
+        .col-extra, .col-standings, .game-category-col, .tiebreaker-col {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-        .col-standings {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
         .col-games-container {
             display: contents;
         }
-        .game-category-col {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .tiebreaker-col {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
         .tiebreaker-box {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.08);
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -653,8 +626,8 @@ HTML_TEMPLATE = """
                                     <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                                 {% endif %}
                             </span>
+                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </div>
-                        <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                     </div>
                     {% endfor %}
                 {% else %}
@@ -683,8 +656,8 @@ HTML_TEMPLATE = """
                                     <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                                 {% endif %}
                             </span>
+                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </div>
-                        <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                     </div>
                     {% endfor %}
                 {% else %}
