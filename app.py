@@ -654,7 +654,7 @@ HTML_TEMPLATE = """
                                 {% endif %}
                             </span>
                         </div>
-                        <div class="tiebreaker-detail">— {{ tb.detail | safe }}</div>
+                        <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                     </div>
                     {% endfor %}
                 {% else %}
@@ -684,7 +684,7 @@ HTML_TEMPLATE = """
                                 {% endif %}
                             </span>
                         </div>
-                        <div class="tiebreaker-detail">— {{ tb.detail | safe }}</div>
+                        <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                     </div>
                     {% endfor %}
                 {% else %}
