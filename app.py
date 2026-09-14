@@ -446,69 +446,54 @@ HTML_TEMPLATE = """
             letter-spacing: 0.5px;
         }
         .layout {
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
-            align-items: flex-start;
-            flex-wrap: wrap;
+            align-items: start;
         }
         .col-extra {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
-            border-right: 1px solid rgba(255,255,255,0.1);
-            padding-right: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
             display: flex;
             flex-direction: column;
             gap: 12px;
-            align-self: flex-start;
         }
         .col-standings {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
-            border-right: 1px solid rgba(255,255,255,0.1);
-            padding-right: 20px;
-            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
         .col-games-container {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            flex: 3 1 750px;
-            border-right: 1px solid rgba(255,255,255,0.1);
-            padding-right: 20px;
-            align-self: flex-start;
+            display: contents;
         }
         .game-category-col {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
             display: flex;
             flex-direction: column;
             gap: 6px;
-            align-self: flex-start;
         }
         .tiebreaker-col {
-            flex: 1 1 250px;
-            min-width: 250px;
-            max-width: 300px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
             display: flex;
             flex-direction: column;
             gap: 6px;
-            border-right: 1px solid rgba(255,255,255,0.1);
-            padding-right: 20px;
-            align-self: flex-start;
         }
         .tiebreaker-box {
-            background: rgba(255, 255, 255, 0.04);
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.08);
             display: flex;
             flex-direction: column;
-            gap: 4px
+            gap: 8px;
         }
         .row {
             display: flex;
@@ -538,20 +523,6 @@ HTML_TEMPLATE = """
         .status-green { color: #4ade80; font-weight: 700; }
         .status-red { color: #f87171; font-weight: 700; }
         .status-white { color: #ffffff; font-weight: 600; }
-
-        @media (max-width: 1024px) {
-            .layout { 
-                flex-direction: column; 
-                align-items: stretch;
-            }
-            .col-extra, .col-standings, .col-games-container, .game-category-col, .tiebreaker-col { 
-                border-right: none; 
-                border-bottom: 1px solid rgba(255,255,255,0.1); 
-                padding-right: 0; 
-                padding-bottom: 12px; 
-                max-width: 100%; 
-                align-self: stretch;
-            }
     </style>
 </head>
 <body>
@@ -604,7 +575,7 @@ HTML_TEMPLATE = """
             {% endif %}
         </div>
 
-        <!-- COLUMN 3: GAMES -->
+        <!-- COLUMNS 3, 4, 5: GAMES -->
         <div class="col-games-container">
             {% set cList = games.critical %}
             {% set iList = games.important %}
@@ -662,26 +633,28 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
-        <!-- COLUMN 4: 2-WAY TIEBREAKERS -->
+        <!-- COLUMN 6: 2-WAY TIEBREAKERS -->
         <div class="tiebreaker-col">
             <h2>2-Way Tiebreakers</h2>
             <div class="tiebreaker-box">
                 {% if tiebreakers_2way %}
                     {% for tb in tiebreakers_2way %}
-                    <div class="row">
-                        <span><strong>Vs. {{ tb.team }}:</strong></span>
-                        <span>
-                            {% if tb.locked %}
-                                {% if tb.advantage == "Yes" %}
-                                    <span class="status-green"> 🔒 Yes</span>
+                    <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
+                        <div class="row">
+                            <span><strong>Vs. {{ tb.team }}:</strong></span>
+                            <span>
+                                {% if tb.locked %}
+                                    {% if tb.advantage == "Yes" %}
+                                        <span class="status-green"> 🔒 Yes</span>
+                                    {% else %}
+                                        <span class="status-red"> 🔒 No</span>
+                                    {% endif %}
                                 {% else %}
-                                    <span class="status-red"> 🔒 No</span>
+                                    <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                                 {% endif %}
-                            {% else %}
-                                <span class="status-white"> 🤷 {{ tb.advantage }}</span>
-                            {% endif %}
-                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
-                        </span>
+                            </span>
+                        </div>
+                        <div class="tiebreaker-detail">— {{ tb.detail | safe }}</div>
                     </div>
                     {% endfor %}
                 {% else %}
@@ -690,26 +663,28 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
-        <!-- COLUMN 5: 3-WAY TIEBREAKERS -->
-        <div class="tiebreaker-col" style="border-right: none;">
+        <!-- COLUMN 7: 3-WAY TIEBREAKERS -->
+        <div class="tiebreaker-col">
             <h2>3-Way Tiebreakers</h2>
             <div class="tiebreaker-box">
                 {% if tiebreakers_3way %}
                     {% for tb in tiebreakers_3way %}
-                    <div class="row">
-                        <span><strong>{{ tb.teams }}:</strong></span>
-                        <span>
-                            {% if tb.locked %}
-                                {% if tb.advantage == "Yes" %}
-                                    <span class="status-green"> 🔒 Yes</span>
+                    <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
+                        <div class="row">
+                            <span><strong>{{ tb.teams }}:</strong></span>
+                            <span>
+                                {% if tb.locked %}
+                                    {% if tb.advantage == "Yes" %}
+                                        <span class="status-green"> 🔒 Yes</span>
+                                    {% else %}
+                                        <span class="status-red"> 🔒 No</span>
+                                    {% endif %}
                                 {% else %}
-                                    <span class="status-red"> 🔒 No</span>
+                                    <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                                 {% endif %}
-                            {% else %}
-                                <span class="status-white"> 🤷 {{ tb.advantage }}</span>
-                            {% endif %}
-                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
-                        </span>
+                            </span>
+                        </div>
+                        <div class="tiebreaker-detail">— {{ tb.detail | safe }}</div>
                     </div>
                     {% endfor %}
                 {% else %}
