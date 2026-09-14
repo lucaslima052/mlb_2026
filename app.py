@@ -454,7 +454,7 @@ HTML_TEMPLATE = """
         .col-extra {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 0px;
         }
         .game-category-col, .tiebreaker-col {
             display: flex;
@@ -471,7 +471,7 @@ HTML_TEMPLATE = """
         }
         .tiebreaker-box {
             background: rgba(255, 255, 255, 0.04);
-            padding: 8px 10px;
+            padding: 6px 10px;
             border-radius: 6px;
             border: 1px solid rgba(255,255,255,0.08);
             display: flex;
@@ -499,7 +499,7 @@ HTML_TEMPLATE = """
         .top-three { font-weight: 700; color: #ffffff; }
         .highlight-jays { font-weight: 800; color: #38bdf8; }
         .highlight-leader { font-weight: 700; color: #ffffff; }
-        .tiebreaker-detail { font-size: 10px; color: #94a3b8; }
+        .tiebreaker-detail { font-size: 11px; color: #94a3b8; }
         
         /* Conditional Lock Color Coding */
         .status-green { color: #4ade80; font-weight: 700; }
@@ -635,8 +635,8 @@ HTML_TEMPLATE = """
                                     <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                                 {% endif %}
                             </span>
-                        </div>
-                        <div class="tiebreaker-detail">— {{ tb.detail | safe }}</div>
+                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
+                        </div>                        
                     </div>
                     {% endfor %}
                 {% else %}
@@ -653,20 +653,18 @@ HTML_TEMPLATE = """
                     {% for tb in tiebreakers_3way %}
                     <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
                         <div class="row">
-                            <span><strong>{{ tb.teams }}:</strong></span>
-                            <span>
-                                {% if tb.locked %}
-                                    {% if tb.advantage == "Yes" %}
-                                        <span class="status-green"> 🔒 Yes</span>
-                                    {% else %}
-                                        <span class="status-red"> 🔒 No</span>
-                                    {% endif %}
+                            <strong>{{ tb.teams }}:</strong>
+                            {% if tb.locked %}
+                                {% if tb.advantage == "Yes" %}
+                                    <span class="status-green"> 🔒 Yes</span>
                                 {% else %}
-                                    <span class="status-white"> 🤷 {{ tb.advantage }}</span>
+                                    <span class="status-red"> 🔒 No</span>
                                 {% endif %}
-                            </span>
+                            {% else %}
+                                <span class="status-white"> 🤷 {{ tb.advantage }}</span>
+                            {% endif %}
+                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </div>
-                        <div class="tiebreaker-detail">— {{ tb.detail | safe }}</div>
                     </div>
                     {% endfor %}
                 {% else %}
