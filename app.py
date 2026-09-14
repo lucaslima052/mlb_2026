@@ -14,6 +14,24 @@ AL_EAST = ["Toronto Blue Jays", "New York Yankees", "Boston Red Sox", "Baltimore
 AL_CENTRAL = ["Chicago White Sox", "Cleveland Guardians", "Detroit Tigers", "Kansas City Royals", "Minnesota Twins"]
 AL_WEST = ["Houston Astros", "Texas Rangers", "Seattle Mariners", "Los Angeles Angels", "Sacramento Athletics"]
 
+INITIALS = {
+    "Toronto Blue Jays": "TOR",
+    "Chicago White Sox": "CWS",
+    "Cleveland Guardians": "CLE",
+    "Detroit Tigers": "DET",
+    "Kansas City Royals": "KC",
+    "Minnesota Twins": "MIN",
+    "Houston Astros": "HOU",
+    "Texas Rangers": "TEX",
+    "Seattle Mariners": "SEA",
+    "Los Angeles Angels": "LAA",
+    "Sacramento Athletics": "SAC",
+    "New York Yankees": "NYY",
+    "Boston Red Sox": "BOS",
+    "Baltimore Orioles": "BAL",
+    "Tampa Bay Rays": "TB"
+}
+
 OUT_OF_CONTENTION_TEAMS = [
     "Kansas City Royals", "Los Angeles Angels", "Sacramento Athletics"
 ]
@@ -48,6 +66,9 @@ def get_nickname(full_name):
                 return " ".join(parts[-2:])
     return parts[-1]
 
+def get_initial(team):
+    return INITIALS.get(team, team[:3].upper())
+
 def get_division(team):
     if team in AL_EAST: return AL_EAST
     if team in AL_CENTRAL: return AL_CENTRAL
@@ -55,7 +76,6 @@ def get_division(team):
     return []
 
 def get_intradivision_record(team, h2h_matrix):
-    """Calculates a team's record against its own division."""
     div_teams = get_division(team)
     w, l, rem = 0, 0, 0
     for opp in div_teams:
@@ -68,149 +88,89 @@ def get_intradivision_record(team, h2h_matrix):
 
 def get_data_dict():
     current_year = datetime.today().year
-
-    # 4 AM ET Rollover Check
     now = datetime.now(ZoneInfo("America/New_York"))
-    if now.hour < 4:
-        target_date = now - timedelta(days=1)
-    else:
-        target_date = now
+    target_date = now - timedelta(days=1) if now.hour < 4 else now
     today = target_date.strftime('%Y-%m-%d')
     
-    standings = []
-    division_leaders = []
-    out_of_contention = []
-    rankings_map = {}
-    leaders_ranking = {}
-    al_teams = {}
-    
-    games_out = {
-        "critical": [],
-        "important": [],
-        "relevant": []
-    }
+    standings, division_leaders, out_of_contention = [], [], []
+    rankings_map, leaders_ranking, al_teams = {}, {}, {}
+    games_out = {"critical": [], "important": [], "relevant": []}
     
     try:
-        # --- 1. Fetch Division Standings & Calculate WC3 Gap ---
+        # --- 1. Fetch Division Standings & Calculate Categories ---
         rs_url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103&season={current_year}"
         res_rs = requests.get(rs_url, headers=HEADERS).json()
         
         if 'records' in res_rs:
             for record in res_rs['records']:
-                team_records = record.get('teamRecords', [])
-                for i, team_data in enumerate(team_records):
-                    raw_name = team_data.get('team', {}).get('name', '')
-                    name = normalize_team_name(raw_name)
+                for i, team_data in enumerate(record.get('teamRecords', [])):
+                    name = normalize_team_name(team_data.get('team', {}).get('name', ''))
                     w = int(team_data.get('wins', 0))
                     l = int(team_data.get('losses', 0))
-                    al_teams[name] = {
-                        'wins': w,
-                        'losses': l,
-                        'is_leader': (i == 0)
-                    }
+                    al_teams[name] = {'wins': w, 'losses': l, 'is_leader': (i == 0)}
                     
-        non_leaders = [ {'name': n, 'wins': s['wins'], 'losses': s['losses']} for n, s in al_teams.items() if not s['is_leader'] ]
+        non_leaders = [{'name': n, 'wins': s['wins'], 'losses': s['losses']} for n, s in al_teams.items() if not s['is_leader']]
         non_leaders.sort(key=lambda x: (x['wins'] - x['losses'], x['wins']), reverse=True)
-        
-        if len(non_leaders) >= 3:
-            wc3_wins, wc3_losses = non_leaders[2]['wins'], non_leaders[2]['losses']
-        else:
-            wc3_wins, wc3_losses = 0, 0
+        wc3_wins, wc3_losses = (non_leaders[2]['wins'], non_leaders[2]['losses']) if len(non_leaders) >= 3 else (0, 0)
             
-        team_categories = {}
-        tracked_teams = set()
-        wc_ahead_teams = set()
-        out_of_contention_teams = set()
-        
+        team_categories, tracked_teams, wc_ahead_teams, out_of_contention_teams = {}, set(), set(), set()
         for name, stats in al_teams.items():
             diff = ((stats['wins'] - wc3_wins) + (wc3_losses - stats['losses'])) / 2.0
-            
             if stats['is_leader']:
-                if abs(diff) <= 3.0: 
-                    team_categories[name] = 'important'
-                    tracked_teams.add(name)
+                if abs(diff) <= 3.0: team_categories[name] = 'important'; tracked_teams.add(name)
             else:
-                if abs(diff) <= 3.0: 
-                    team_categories[name] = 'critical'
-                    tracked_teams.add(name)
-                elif abs(diff) <= 6.0: 
-                    team_categories[name] = 'relevant'
-                    tracked_teams.add(name)
-                elif diff > 6.0:
-                    team_categories[name] = 'ahead'
-                    wc_ahead_teams.add(name)
-                else: 
-                    out_of_contention_teams.add(name)
+                if abs(diff) <= 3.0: team_categories[name] = 'critical'; tracked_teams.add(name)
+                elif abs(diff) <= 6.0: team_categories[name] = 'relevant'; tracked_teams.add(name)
+                elif diff > 6.0: team_categories[name] = 'ahead'; wc_ahead_teams.add(name)
+                else: out_of_contention_teams.add(name)
                     
         if 'records' in res_rs:
             for record in res_rs['records']:
                 team_records = record.get('teamRecords', [])
                 if len(team_records) >= 2:
-                    leader_name = normalize_team_name(team_records[0].get('team', {}).get('name', ''))
                     l_wins = int(team_records[0].get('wins', 0))
                     l_losses = int(team_records[0].get('losses', 0))
-                    
                     s_wins = int(team_records[1].get('wins', 0))
                     s_losses = int(team_records[1].get('losses', 0))
-                    
                     ga_val = ((l_wins - s_wins) + (s_losses - l_losses)) / 2.0
                     ga_str = f"+{int(ga_val)}" if ga_val.is_integer() else f"+{ga_val}"
-                    if ga_val == 0: ga_str = "-"
-                        
                     division_leaders.append({
-                        "team": leader_name,
-                        "wins": l_wins,
-                        "losses": l_losses,
-                        "ga": ga_str
+                        "team": normalize_team_name(team_records[0].get('team', {}).get('name', '')),
+                        "wins": l_wins, "losses": l_losses, "ga": "-" if ga_val == 0 else ga_str
                     })
                     
         division_leaders.sort(key=lambda x: (x['wins'] - x['losses'], x['wins']), reverse=True)
         for i, dl in enumerate(division_leaders):
-            dl['rank'] = i + 1
-            dl['record'] = f"{dl['wins']}-{dl['losses']}"
+            dl['rank'], dl['record'] = i + 1, f"{dl['wins']}-{dl['losses']}"
             leaders_ranking[dl['team']] = dl['rank']
 
         # --- 2. Fetch Wild Card Standings ---
         wc_url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103&season={current_year}&standingsTypes=wildCard"
         res_wc = requests.get(wc_url, headers=HEADERS).json()
-        
         if 'records' in res_wc:
             for record in res_wc['records']:
                 for team_data in record.get('teamRecords', []):
                     name = normalize_team_name(team_data.get('team', {}).get('name', ''))
-                    w = int(team_data.get('wins', 0))
-                    l = int(team_data.get('losses', 0))
+                    w, l = int(team_data.get('wins', 0)), int(team_data.get('losses', 0))
                     gb = team_data.get('wildCardGamesBack', '-')
                     rank_str = str(team_data.get('wildCardRank', '99'))
                     rank = int(rank_str) if rank_str.isdigit() else 99
                     
                     if (name in tracked_teams or name in wc_ahead_teams) and not al_teams.get(name, {}).get('is_leader'):
-                        standings.append({
-                            "team": name,
-                            "rank": rank,
-                            "record": f"{w}-{l}",
-                            "gb": gb
-                        })
+                        standings.append({"team": name, "rank": rank, "record": f"{w}-{l}", "gb": gb})
                         rankings_map[name] = rank
-                        
                     if name in out_of_contention_teams:
-                        out_of_contention.append({
-                            "team": name,
-                            "rank": rank,
-                            "record": f"{w}-{l}",
-                            "gb": gb
-                        })
+                        out_of_contention.append({"team": name, "rank": rank, "record": f"{w}-{l}", "gb": gb})
                         
         standings.sort(key=lambda x: x['rank'])
         out_of_contention.sort(key=lambda x: x['rank'])
-        
-    except Exception as e:
+    except:
         pass
 
-    # --- 3. Build Global H2H Matrix via Full Season Schedule ---
+    # --- 3. Build Global H2H Matrix via Full Season Schedule (Regular Season Only) ---
     h2h_matrix = {}
     try:
-        full_sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&season={current_year}"
+        full_sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&season={current_year}&gameType=R"
         full_sched = requests.get(full_sched_url, headers=HEADERS).json()
         for d in full_sched.get('dates', []):
             for g in d.get('games', []):
@@ -219,7 +179,6 @@ def get_data_dict():
                 
                 if away not in h2h_matrix: h2h_matrix[away] = {}
                 if home not in h2h_matrix[away]: h2h_matrix[away][home] = {'w': 0, 'l': 0, 'rem': 0}
-                
                 if home not in h2h_matrix: h2h_matrix[home] = {}
                 if away not in h2h_matrix[home]: h2h_matrix[home][away] = {'w': 0, 'l': 0, 'rem': 0}
                 
@@ -248,7 +207,7 @@ def get_data_dict():
         bj_name = "Toronto Blue Jays"
         target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important'] and t != bj_name]
         
-        # 2-Way Tiebreakers
+        # --- 2-Way Tiebreakers ---
         for team in target_teams:
             h2h = h2h_matrix.get(bj_name, {}).get(team, {'w': 0, 'l': 0, 'rem': 0})
             bj_w, bj_l, rem = h2h['w'], h2h['l'], h2h['rem']
@@ -256,7 +215,6 @@ def get_data_dict():
             bj_div_w, bj_div_l, bj_div_rem = get_intradivision_record(bj_name, h2h_matrix)
             opp_div_w, opp_div_l, opp_div_rem = get_intradivision_record(team, h2h_matrix)
             
-            # MLB Rule 1: Evaluate Head-to-Head 
             if rem == 0 and bj_w != bj_l:
                 locked = True
                 advantage = "Yes" if bj_w > bj_l else "No"
@@ -272,22 +230,14 @@ def get_data_dict():
                 detail = f"{bj_w}-{bj_l} record"
                 if rem > 0: detail += f" ({rem} rem)"
             else:
-                # MLB Rule 2: If H2H is mathematically tied, check Intradivision record
                 if rem == 0 and bj_w == bj_l:
                     detail = f"{bj_w}-{bj_l} record, "
-                    
                     if bj_div_w > opp_div_w + opp_div_rem:
-                        locked = True
-                        advantage = "Yes"
-                        detail += "clinched better intradivision: "
+                        locked, advantage = True, "Yes"
+                        detail += "better intradivision: "
                     elif opp_div_w > bj_div_w + bj_div_rem:
-                        locked = True
-                        advantage = "No"
-                        detail += "lost intradivision: "
-                    elif bj_div_rem == 0 and opp_div_rem == 0:
-                        locked = True
-                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Check Intraleague"
-                        detail += "better intradivision: " if advantage == "Yes" else "worse intradivision: " if advantage == "No" else "tied intradivision: "
+                        locked, advantage = True, "No"
+                        detail += "worse intradivision: "
                     else:
                         locked = False
                         advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
@@ -298,82 +248,93 @@ def get_data_dict():
                     detail += f" vs. {opp_div_w}-{opp_div_l}"
                     if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
                 else:
-                    # Undecided H2H and games remaining
                     locked = False
                     advantage = "Yes" if bj_w > bj_l else "No" if bj_l > bj_w else "Tied"
                     detail = f"{bj_w}-{bj_l} record ({rem} rem)"
                     
-            tiebreakers_2way.append({
-                "team": get_nickname(team),
-                "locked": locked,
-                "advantage": advantage,
-                "detail": detail
-            })
+            tiebreakers_2way.append({"team": get_initial(team), "locked": locked, "advantage": advantage, "detail": detail})
             
-        # 3-Way Tiebreakers: Blue Jays AND (AL Central targets) AND (AL West targets)
+        # --- 3-Way Tiebreakers ---
         cen_tracked = [t for t in target_teams if t in AL_CENTRAL]
         wes_tracked = [t for t in target_teams if t in AL_WEST]
         
         for c_team in cen_tracked:
             for w_team in wes_tracked:
-                teams = [bj_name, c_team, w_team]
-                stats = {t: {'w': 0, 'l': 0, 'rem': 0} for t in teams}
+                base_TC_w = h2h_matrix.get(bj_name, {}).get(c_team, {}).get('w', 0)
+                base_TC_l = h2h_matrix.get(bj_name, {}).get(c_team, {}).get('l', 0)
+                base_TW_w = h2h_matrix.get(bj_name, {}).get(w_team, {}).get('w', 0)
+                base_TW_l = h2h_matrix.get(bj_name, {}).get(w_team, {}).get('l', 0)
+                base_CW_w = h2h_matrix.get(c_team, {}).get(w_team, {}).get('w', 0)
+                base_CW_l = h2h_matrix.get(c_team, {}).get(w_team, {}).get('l', 0)
                 
-                pairs = [(bj_name, c_team), (bj_name, w_team), (c_team, w_team)]
-                total_rem = 0
-                for t1, t2 in pairs:
-                    record = h2h_matrix.get(t1, {}).get(t2, {'w':0, 'l':0, 'rem':0})
-                    stats[t1]['w'] += record['w']
-                    stats[t1]['l'] += record['l']
-                    stats[t1]['rem'] += record['rem']
-                    
-                    stats[t2]['w'] += record['l']
-                    stats[t2]['l'] += record['w']
-                    stats[t2]['rem'] += record['rem']
-                    
-                    total_rem += record['rem']
+                rem_TC = h2h_matrix.get(bj_name, {}).get(c_team, {}).get('rem', 0)
+                rem_TW = h2h_matrix.get(bj_name, {}).get(w_team, {}).get('rem', 0)
+                rem_CW = h2h_matrix.get(c_team, {}).get(w_team, {}).get('rem', 0)
                 
-                for t in teams:
-                    total_games = stats[t]['w'] + stats[t]['l']
-                    stats[t]['pct'] = stats[t]['w'] / total_games if total_games > 0 else 0
-                    
-                sorted_teams = sorted(teams, key=lambda x: (stats[x]['pct'], stats[x]['w']), reverse=True)
-                rank = sorted_teams.index(bj_name) + 1
+                can_win, can_lose = False, False
                 
-                if total_rem == 0:
-                    locked = True
-                    if rank == 1: advantage = "1st Seed"
-                    elif rank == 2: advantage = "2nd Seed"
-                    else: advantage = "3rd Seed"
+                for i in range(rem_TC + 1):
+                    for j in range(rem_TW + 1):
+                        for k in range(rem_CW + 1):
+                            t_w = (base_TC_w + i) + (base_TW_w + j)
+                            t_l = (base_TC_l + (rem_TC - i)) + (base_TW_l + (rem_TW - j))
+                            c_w = (base_TC_l + (rem_TC - i)) + (base_CW_w + k)
+                            c_l = (base_TC_w + i) + (base_CW_l + (rem_CW - k))
+                            w_w = (base_TW_l + (rem_TW - j)) + (base_CW_l + (rem_CW - k))
+                            w_l = (base_TW_w + j) + (base_CW_w + k)
+                            
+                            t_pct = t_w / (t_w + t_l) if (t_w+t_l) > 0 else 0
+                            c_pct = c_w / (c_w + c_l) if (c_w+c_l) > 0 else 0
+                            w_pct = w_w / (w_w + w_l) if (w_w+w_l) > 0 else 0
+                            
+                            max_pct = max(t_pct, c_pct, w_pct)
+                            leaders = []
+                            if abs(t_pct - max_pct) < 0.001: leaders.append('T')
+                            if abs(c_pct - max_pct) < 0.001: leaders.append('C')
+                            if abs(w_pct - max_pct) < 0.001: leaders.append('W')
+                            
+                            if 'T' not in leaders: can_lose = True
+                            elif len(leaders) == 1: can_win = True
+                            else: can_win = True; can_lose = True
+                
+                total_rem = rem_TC + rem_TW + rem_CW
+                bj_init, c_init, w_init = get_initial(bj_name), get_initial(c_team), get_initial(w_team)
+                t_base_w, t_base_l = base_TC_w + base_TW_w, base_TC_l + base_TW_l
+                c_base_w, c_base_l = base_TC_l + base_CW_w, base_TC_w + base_CW_l
+                w_base_w, w_base_l = base_TW_l + base_CW_l, base_TW_w + base_CW_w
+                
+                detail = f"{bj_init} {t_base_w}-{t_base_l}, {c_init} {c_base_w}-{c_base_l}, {w_init} {w_base_w}-{w_base_l}"
+                if total_rem > 0: detail += f" ({total_rem} rem)"
+                
+                locked = False
+                if can_win and not can_lose:
+                    locked, advantage = True, "Yes"
+                elif can_lose and not can_win:
+                    locked, advantage = True, "No"
                 else:
-                    locked = False
-                    if stats[bj_name]['pct'] == stats[sorted_teams[0]]['pct'] and rank != 1:
-                        advantage = "Tied 1st"
-                    else:
-                        if rank == 1: advantage = "1st"
-                        elif rank == 2: advantage = "2nd"
-                        else: advantage = "3rd"
+                    advantage = "No" if (t_base_w / max(1, t_base_w + t_base_l)) < (c_base_w / max(1, c_base_w + c_base_l)) else "Yes"
+
+                t_pct = t_base_w / max(1, t_base_w + t_base_l)
+                c_pct = c_base_w / max(1, c_base_w + c_base_l)
+                w_pct = w_base_w / max(1, w_base_w + w_base_l)
+                max_pct = max(t_pct, c_pct, w_pct)
+                
+                curr_leaders = []
+                if abs(t_pct - max_pct) < 0.001: curr_leaders.append('T')
+                if abs(c_pct - max_pct) < 0.001: curr_leaders.append('C')
+                if abs(w_pct - max_pct) < 0.001: curr_leaders.append('W')
+
+                if len(curr_leaders) == 2 and 'T' in curr_leaders:
+                    if 'C' in curr_leaders: detail += f" (See {bj_init} vs {c_init} H2H)"
+                    if 'W' in curr_leaders: detail += f" (See {bj_init} vs {w_init} H2H)"
                         
-                bj_rec = f"{stats[bj_name]['w']}-{stats[bj_name]['l']}"
-                c_rec = f"{stats[c_team]['w']}-{stats[c_team]['l']}"
-                w_rec = f"{stats[w_team]['w']}-{stats[w_team]['l']}"
-                
-                detail = f"Combined H2H: TOR {bj_rec}, {get_nickname(c_team)} {c_rec}, {get_nickname(w_team)} {w_rec}"
-                if total_rem > 0:
-                    detail += f" ({total_rem} rem among trio)"
-                
-                tiebreakers_3way.append({
-                    "teams": f"Vs. {get_nickname(c_team)} & {get_nickname(w_team)}",
-                    "locked": locked,
-                    "advantage": advantage,
-                    "detail": detail
-                })
+                tiebreakers_3way.append({"teams": f"Vs. {c_init} & {w_init}", "locked": locked, "advantage": advantage, "detail": detail})
     except:
         pass
 
     # --- 5. Fetch Today's Games ---
-    sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={today}&hydrate=linescore"
     try:
+        sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={today}&hydrate=linescore"
         sched_res = requests.get(sched_url, headers=HEADERS).json()
         if sched_res.get('totalGames', 0) > 0:
             for date_data in sched_res.get('dates', []):
@@ -381,9 +342,7 @@ def get_data_dict():
                     away_full = normalize_team_name(g['teams']['away']['team']['name'])
                     home_full = normalize_team_name(g['teams']['home']['team']['name'])
                     
-                    away_nick = get_nickname(away_full)
-                    home_nick = get_nickname(home_full)
-                    
+                    away_nick, home_nick = get_nickname(away_full), get_nickname(home_full)
                     status_track = g['status']['detailedState']
                     a_score, h_score = g['teams']['away'].get('score', 0), g['teams']['home'].get('score', 0)
                     raw_game_date = g.get('gameDate')
@@ -394,12 +353,10 @@ def get_data_dict():
                         current_inning = linescore.get('currentInning', '')
                         inning_half = linescore.get('inningHalf', '')
                         outs = linescore.get('outs', 0)
-                        half_symbol = "▲" if inning_half == "Top" else "▼"
-                        status = f"{half_symbol}{current_inning}th - {outs} outs"
+                        status = f"{'▲' if inning_half == 'Top' else '▼'}{current_inning}th - {outs} outs"
                     elif raw_game_date and status_track in ['Scheduled', 'Pre-Game', 'Warmup']:
                         utc_dt = datetime.strptime(raw_game_date, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=ZoneInfo("UTC"))
-                        et_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
-                        status = et_dt.strftime("%H:%M ET")
+                        status = utc_dt.astimezone(ZoneInfo("America/New_York")).strftime("%H:%M ET")
                     else:
                         status = g['status'].get('detailedState', 'Scheduled')
 
@@ -408,24 +365,17 @@ def get_data_dict():
                         desired_full = "Toronto Blue Jays"
                     elif home_full in rankings_map and away_full in rankings_map:
                         desired_full = home_full if (rankings_map[home_full] > rankings_map[away_full] and rankings_map[away_full]>= 3) or (rankings_map[home_full] <= 2 and rankings_map[away_full] > 1) else away_full
-                    elif home_full in rankings_map:
-                        desired_full = away_full
-                    elif away_full in rankings_map:
-                        desired_full = home_full
+                    elif home_full in rankings_map: desired_full = away_full
+                    elif away_full in rankings_map: desired_full = home_full
                     elif home_full in leaders_ranking and away_full in leaders_ranking:
                         desired_full = home_full if (leaders_ranking[home_full] < leaders_ranking[away_full]) else away_full
-                    elif home_full in leaders_ranking:
-                        desired_full = away_full
-                    elif away_full in leaders_ranking:
-                        desired_full = home_full
+                    elif home_full in leaders_ranking: desired_full = away_full
+                    elif away_full in leaders_ranking: desired_full = home_full
                         
                     cat = None
-                    if team_categories.get(away_full) == 'critical' or team_categories.get(home_full) == 'critical':
-                        cat = 'critical'
-                    elif team_categories.get(away_full) == 'important' or team_categories.get(home_full) == 'important':
-                        cat = 'important'
-                    elif team_categories.get(away_full) == 'relevant' or team_categories.get(home_full) == 'relevant':
-                        cat = 'relevant'
+                    if team_categories.get(away_full) == 'critical' or team_categories.get(home_full) == 'critical': cat = 'critical'
+                    elif team_categories.get(away_full) == 'important' or team_categories.get(home_full) == 'important': cat = 'important'
+                    elif team_categories.get(away_full) == 'relevant' or team_categories.get(home_full) == 'relevant': cat = 'relevant'
                         
                     if cat and desired_full:
                         desired = get_nickname(desired_full)
@@ -434,20 +384,15 @@ def get_data_dict():
                             result = "✅ Won (Favorable)" if winner == desired_full else "❌ Lost (Unfavorable)"
                         elif status_track in ['In Progress', 'Live']:
                             winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(a_score) else None
-                            if winner == desired_full:
-                                result = "🟢 Leading (Favorable)"
-                            elif winner and winner != desired_full:
-                                result = "🔴 Trailing (Unfavorable)"
-                            else:
-                                result = "⏳ Tied / Live"
+                            if winner == desired_full: result = "🟢 Leading (Favorable)"
+                            elif winner and winner != desired_full: result = "🔴 Trailing (Unfavorable)"
+                            else: result = "⏳ Tied / Live"
                         else:
                             result = "🗓️ Upcoming"
                             
                         games_out[cat].append({
                             "matchup": f"{away_nick} {a_score} vs {h_score} {home_nick}",
-                            "status": status,
-                            "desired": desired,
-                            "result": result
+                            "status": status, "desired": desired, "result": result
                         })
     except:
         pass
@@ -583,6 +528,11 @@ HTML_TEMPLATE = """
         .top-three { font-weight: 700; color: #ffffff; }
         .highlight-jays { font-weight: 800; color: #38bdf8; }
         .highlight-leader { font-weight: 700; color: #ffffff; }
+        
+        /* Conditional Lock Color Coding */
+        .status-green { color: #4ade80; font-weight: 700; }
+        .status-red { color: #f87171; font-weight: 700; }
+        .status-white { color: #ffffff; font-weight: 600; }
 
         @media (max-width: 1024px) {
             .layout { flex-direction: column; }
@@ -640,13 +590,12 @@ HTML_TEMPLATE = """
             {% endif %}
         </div>
 
-        <!-- COLUMN 3: GAMES (Split into Critical, Important, and Other Relevant columns) -->
+        <!-- COLUMN 3: GAMES -->
         <div class="col-games-container">
             {% set cList = games.critical %}
             {% set iList = games.important %}
             {% set rList = games.relevant %}
 
-            <!-- Critical Games Column -->
             <div class="game-category-col">
                 <div class="cat-header">Critical Games</div>
                 {% if cList|length == 0 %}
@@ -664,7 +613,6 @@ HTML_TEMPLATE = """
                 {% endif %}
             </div>
 
-            <!-- Important Games Column -->
             <div class="game-category-col">
                 <div class="cat-header">Important Games</div>
                 {% if iList|length == 0 %}
@@ -682,7 +630,6 @@ HTML_TEMPLATE = """
                 {% endif %}
             </div>
 
-            <!-- Other Relevant Games Column -->
             <div class="game-category-col">
                 <div class="cat-header">Other Relevant Games</div>
                 {% if rList|length == 0 %}
@@ -714,8 +661,16 @@ HTML_TEMPLATE = """
                         <div class="row">
                             <span>Vs. {{ tb.team }}:</span>
                             <span>
-                                {% if tb.locked %}🔒{% else %}🔓{% endif %} 
-                                <strong>{{ tb.advantage }}</strong> — {{ tb.detail }}
+                                {% if tb.locked %}
+                                    {% if tb.advantage == "Yes" %}
+                                        <span class="status-green">🔒 Yes</span>
+                                    {% else %}
+                                        <span class="status-red">🔒 No</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="status-white">🔓 {{ tb.advantage }}</span>
+                                {% endif %}
+                                — {{ tb.detail }}
                             </span>
                         </div>
                         {% endfor %}
@@ -732,8 +687,16 @@ HTML_TEMPLATE = """
                         <div class="row">
                             <span>{{ tb.teams }}:</span>
                             <span>
-                                {% if tb.locked %}🔒{% else %}🔓{% endif %} 
-                                <strong>{{ tb.advantage }}</strong> — {{ tb.detail }}
+                                {% if tb.locked %}
+                                    {% if tb.advantage == "Yes" %}
+                                        <span class="status-green">🔒 Yes</span>
+                                    {% else %}
+                                        <span class="status-red">🔒 No</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="status-white">🔓 {{ tb.advantage }}</span>
+                                {% endif %}
+                                — {{ tb.detail }}
                             </span>
                         </div>
                         {% endfor %}
