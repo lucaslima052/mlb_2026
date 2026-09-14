@@ -486,11 +486,8 @@ HTML_TEMPLATE = """
             color: #cbd5e1;
         }
         .row-tiebreaker {
-            display: flex;
-            align-items: center;
             color: #cbd5e1;
-            white-space: normal;
-            flex-wrap: wrap;
+            line-height 1.4;
         }
         .game {
             background: rgba(255, 255, 255, 0.04);
@@ -631,19 +628,17 @@ HTML_TEMPLATE = """
                     {% for tb in tiebreakers_2way %}
                     <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
                         <div class="row-tiebreaker">
-                            <span><strong>Vs. {{ tb.team }}: </strong></span>
-                            <span>
-                                {% if tb.locked %}
-                                    {% if tb.advantage == "Yes" %}
-                                        <span class="status-green"> 🔒 Yes</span>
-                                    {% else %}
-                                        <span class="status-red"> 🔒 No</span>
-                                    {% endif %}
+                            <strong>Vs. {{ tb.team }}: </strong>
+                            {% if tb.locked %}
+                                {% if tb.advantage == "Yes" %}
+                                    <span class="status-green"> 🔒 Yes </span>
                                 {% else %}
-                                    <span class="status-white"> 🤷 {{ tb.advantage }}</span>
+                                    <span class="status-red"> 🔒 No </span>
                                 {% endif %}
-                            </span>
-                            <span class="tiebreaker-detail"> — {{ tb.detail | safe }}</span>
+                            {% else %}
+                                <span class="status-white"> 🤷 {{ tb.advantage }} </span>
+                            {% endif %}
+                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </div>                        
                     </div>
                     {% endfor %}
