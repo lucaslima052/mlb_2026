@@ -527,6 +527,7 @@ HTML_TEMPLATE = """
         .top-three { font-weight: 700; color: #ffffff; }
         .highlight-jays { font-weight: 800; color: #38bdf8; }
         .highlight-leader { font-weight: 700; color: #ffffff; }
+        .tiebreaker-detail { font-size: 10px; color: #94a3b8; }
         
         /* Conditional Lock Color Coding */
         .status-green { color: #4ade80; font-weight: 700; }
@@ -653,22 +654,20 @@ HTML_TEMPLATE = """
             <div class="tiebreaker-box">
                 {% if tiebreakers_2way %}
                     {% for tb in tiebreakers_2way %}
-                    <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
-                        <div class="row">
-                            <span><strong>Vs. {{ tb.team }}:</strong></span>
-                            <span>
-                                {% if tb.locked %}
-                                    {% if tb.advantage == "Yes" %}
-                                        <span class="status-green">🔒 Yes</span>
-                                    {% else %}
-                                        <span class="status-red">🔒 No</span>
-                                    {% endif %}
+                    <div class="row">
+                        <span><strong>Vs. {{ tb.team }}:</strong></span>
+                        <span>
+                            {% if tb.locked %}
+                                {% if tb.advantage == "Yes" %}
+                                    <span class="status-green">🔒 Yes</span>
                                 {% else %}
-                                    <span class="status-white">🤷 {{ tb.advantage }}</span>
+                                    <span class="status-red">🔒 No</span>
                                 {% endif %}
-                                <div style="font-size: 10px; color: #94a3b8;">— {{ tb.detail | safe }}</div>
-                            </span>
-                        </div>
+                            {% else %}
+                                <span class="status-white">🤷 {{ tb.advantage }}</span>
+                            {% endif %}
+                            <span class="tieabreaker-detail">— {{ tb.detail | safe }}</span>
+                        </span>
                     </div>
                     {% endfor %}
                 {% else %}
