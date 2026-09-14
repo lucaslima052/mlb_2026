@@ -118,7 +118,7 @@ def get_data_dict():
             if stats['is_leader']:
                 if abs(diff) <= 3.0: team_categories[name] = 'important'; tracked_teams.add(name)
             else:
-                if abs(diff) <= 4.0: team_categories[name] = 'critical'; tracked_teams.add(name)
+                if abs(diff) <= 3.0: team_categories[name] = 'critical'; tracked_teams.add(name)
                 elif abs(diff) <= 6.0: team_categories[name] = 'relevant'; tracked_teams.add(name)
                 elif diff > 6.0: team_categories[name] = 'ahead'; wc_ahead_teams.add(name)
                 else: out_of_contention_teams.add(name)
@@ -240,9 +240,9 @@ def get_data_dict():
                 detail += f" vs. {opp_div_w}-{opp_div_l}"
                 if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
             else:
-                if bj_w == bj_l and rem > 0:
-                    advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
                 locked = False
+                if bj_w == bj_l and rem > 0: 
+                    advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
                 detail = f"{bj_w}-{bj_l} ({rem} rem), intradiv. {bj_div_w}-{bj_div_l}"
                 if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
                 detail += f" vs. {opp_div_w}-{opp_div_l}"
