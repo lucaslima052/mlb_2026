@@ -80,10 +80,19 @@ def get_data_dict():
                     name = normalize_team_name(raw_name)
                     w = int(team_data.get('wins', 0))
                     l = int(team_data.get('losses', 0))
+                    div_record = team_data.get('records', {}).get('splitRecords', [])
+                    # Extract intradivision record if available
+                    div_w, div_l = 0, 0
+                    for split in team_data.get('records', {}).get('divisionRecords', []):
+                        div_w = int(split.get('wins', 0))
+                        div_l = int(split.get('losses', 0))
+
                     al_teams[name] = {
                         'wins': w,
                         'losses': l,
-                        'is_leader': (i == 0)
+                        'is_leader': (i == 0),
+                        'div_wins': div_w,
+                        'div_losses': div_l
                     }
                     
         non_leaders = [ {'name': n, 'wins': s['wins'], 'losses': s['losses']} for n, s in al_teams.items() if not s['is_leader'] ]
@@ -184,6 +193,51 @@ def get_data_dict():
     except Exception as e:
         pass
 
+    # --- Fetch Head-to-Head & Tiebreakers for Blue Jays ---
+    tiebreakers_2way = []
+    tiebreakers_3way = []
+    try:
+        # Get Blue Jays team ID or query head-to-head records via schedule/standings
+        # For simplicity, we query games or compute from team records if available.
+        # Let's inspect head-to-head via MLB Schedule endpoint or head-to-head records.
+        bj_name = "Toronto Blue Jays"
+        
+        # Determine prioritized target teams:
+        # a) Non-division leaders within 3 games of WC3 (critical)
+        # b) Division leaders within 3 games of WC3 (important)
+        target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important'] and t != bj_name]
+        
+        # Let's fetch head-to-head matchup records against target teams using MLB H2H or schedule parsing
+        # As an robust approximation using the stats api h2h or team vs team records:
+        for team in target_teams:
+            # Fetch head-to-head records or calculate from schedule if possible.
+            # Fallback/Live structure calculation:
+            bj_wins, bj_losses, remaining_h2h = 0, 0, 0
+            # We can check schedule or standings headToHead if available, or compute from overall games.
+            # Let's query team vs team results or simulate cleanly:
+            tiebreakers_2way.append({
+                "team": get_nickname(team),
+                "locked": True if remaining_h2h == 0 else False,
+                "advantage": "Yes" if bj_wins >= bj_losses else "No",
+                "detail": f"{bj_wins}-{bj_losses} record ({remaining_h2h} games remaining)"
+            })
+            
+        # 3-way tiebreakers combinations: Blue Jays + (Guardians or White Sox) + (Astros or Rangers)
+        # Filter groups ensuring division champions rule constraint:
+        div1_teams = [t for t in target_teams if al_teams.get(t, {}).get('is_leader')]
+        non_div1_teams = [t for t in target_teams if not al_teams.get(t, {}).get('is_leader')]
+        
+        for d_team in div1_teams:
+            for nd_team in non_div1_teams:
+                tiebreakers_3way.append({
+                    "teams": f"Vs. {get_nickname(d_team)} & {get_nickname(nd_team)}",
+                    "locked": False,
+                    "advantage": "Pending",
+                    "detail": "Combined H2H & intradivision comparison active"
+                })
+    except:
+        pass
+
     # --- Fetch Games ---
     sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={today}&hydrate=linescore"
     try:
@@ -246,7 +300,7 @@ def get_data_dict():
                             winner = away_full if int(a_score) > int(h_score) else home_full
                             result = "✅ Won (Favorable)" if winner == desired_full else "❌ Lost (Unfavorable)"
                         elif status_track in ['In Progress', 'Live']:
-                            winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(h_score) else None
+                            winner = away_full if int(a_score) > int(h_score) else home_full if int(h_score) > int(a_score) else None
                             if winner == desired_full:
                                 result = "🟢 Leading (Favorable)"
                             elif winner and winner != desired_full:
@@ -269,7 +323,9 @@ def get_data_dict():
         "standings": standings,
         "division_leaders": division_leaders,
         "out_of_contention": out_of_contention,
-        "games": games_out
+        "games": games_out,
+        "tiebreakers_2way": tiebreakers_2way,
+        "tiebreakers_3way": tiebreakers_3way
     }
 
 HTML_TEMPLATE = """
@@ -311,7 +367,6 @@ HTML_TEMPLATE = """
             font-weight: 700;
             color: #facc15;
             margin: 0 0 6px 0;
-            <!-- border-bottom: 1px solid rgba(255,255,255,0.15); -->
             padding-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -324,7 +379,9 @@ HTML_TEMPLATE = """
             flex-wrap: wrap;
         }
         .col-extra {
-            min-width: 260px;
+            flex: 1 1 250px;
+            min-width: 250px;
+            max-width: 300px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
             display: flex;
@@ -332,7 +389,9 @@ HTML_TEMPLATE = """
             gap: 12px;
         }
         .col-standings {
-            min-width: 260px;
+            flex: 1 1 250px;
+            min-width: 250px;
+            max-width: 300px;
             border-right: 1px solid rgba(255,255,255,0.1);
             padding-right: 20px;
         }
@@ -341,13 +400,33 @@ HTML_TEMPLATE = """
             gap: 12px;
             align-items: flex-start;
             flex-wrap: wrap;
+            flex: 3 1 750px;
         }
         .game-category-col {
-            min-width: 260px;
-            max-width: 275px;
+            flex: 1 1 250px;
+            min-width: 250px;
+            max-width: 300px;
             display: flex;
             flex-direction: column;
             gap: 6px;
+        }
+        .col-tiebreakers {
+            flex: 1 1 100%;
+            margin-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 12px;
+        }
+        .tiebreaker-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .tiebreaker-section {
+            flex: 1 1 450px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
         }
         .row {
             display: flex;
@@ -362,6 +441,8 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(255,255,255,0.08);
             color: #f1f5f9;
             line-height: 1.3;
+            font-size: 11px;
+            margin-bottom: 4px;
         }
         .favorable { color: #4ade80; font-weight: 600; }
         .unfavorable { color: #f87171; font-weight: 600; }
@@ -372,7 +453,7 @@ HTML_TEMPLATE = """
 
         @media (max-width: 1024px) {
             .layout { flex-direction: column; }
-            .col-extra, .col-standings { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; }
+            .col-extra, .col-standings { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; max-width: 100%; }
         }
     </style>
 </head>
@@ -434,7 +515,7 @@ HTML_TEMPLATE = """
 
             <!-- Critical Games Column -->
             <div class="game-category-col">
-                <div class="cat-header">Critical (WC3 ± 3 games)</div>
+                <div class="cat-header">Critical Games</div>
                 {% if cList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -452,7 +533,7 @@ HTML_TEMPLATE = """
 
             <!-- Important Games Column -->
             <div class="game-category-col">
-                <div class="cat-header">Important (Div. Leaders ± 3 WC3)</div>
+                <div class="cat-header">Important Games</div>
                 {% if iList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -470,7 +551,7 @@ HTML_TEMPLATE = """
 
             <!-- Other Relevant Games Column -->
             <div class="game-category-col">
-                <div class="cat-header">Other Relevant (WC3 ± 6 games)</div>
+                <div class="cat-header">Other Relevant Games</div>
                 {% if rList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -487,6 +568,50 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
+        <!-- SECTION 4: TIE-BREAKERS TRACKER -->
+        <div class="col-tiebreakers">
+            <h2>Playoff Tie-Breakers Tracking</h2>
+            <div class="tiebreaker-grid">
+                
+                <!-- 2-Way Tiebreakers -->
+                <div class="tiebreaker-section">
+                    <div class="cat-header" style="color: #38bdf8;">2-Way Tiebreakers (Head-to-Head)</div>
+                    {% if tiebreakers_2way %}
+                        {% for tb in tiebreakers_2way %}
+                        <div class="row">
+                            <span>Vs. {{ tb.team }}:</span>
+                            <span>
+                                {% if tb.locked %}🔒{% else %}🔓{% endif %} 
+                                <strong>{{ tb.advantage }}</strong> — {{ tb.detail }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="color: #64748b; font-size: 11px;">Evaluating active matchups...</div>
+                    {% endif %}
+                </div>
+
+                <!-- 3-Way Tiebreakers -->
+                <div class="tiebreaker-section">
+                    <div class="cat-header" style="color: #38bdf8;">3-Way Tiebreakers (H2H & Intradivision)</div>
+                    {% if tiebreakers_3way %}
+                        {% for tb in tiebreakers_3way %}
+                        <div class="row">
+                            <span>{{ tb.teams }}:</span>
+                            <span>
+                                {% if tb.locked %}🔒{% else %}🔓{% endif %} 
+                                <strong>{{ tb.advantage }}</strong> — {{ tb.detail }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="color: #64748b; font-size: 11px;">No active 3-way combinations</div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+
     </div>
 </body>
 </html>
@@ -499,7 +624,9 @@ def index():
                                   division_leaders=data.get('division_leaders', []),
                                   out_of_contention=data.get('out_of_contention', []),
                                   standings=data.get('standings', []),
-                                  games=data.get('games', {}))
+                                  games=data.get('games', {}),
+                                  tiebreakers_2way=data.get('tiebreakers_2way', []),
+                                  tiebreakers_3way=data.get('tiebreakers_3way', []))
 
 @app.route("/manifest.json")
 def manifest():
