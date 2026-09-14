@@ -225,29 +225,28 @@ def get_data_dict():
                 advantage = "No"
                 detail = f"{bj_w}-{bj_l} record"
                 if rem > 0: detail += f" ({rem} rem)"
-            else:
-                if rem == 0 and bj_w == bj_l:
-                    if bj_div_w > opp_div_w + opp_div_rem:
-                        locked = True
-                        advantage = "Yes"
-                    elif opp_div_w > bj_div_w + bj_div_rem:
-                        locked = True
-                        advantage = "No"
-                    else:
-                        locked = False
-                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
-                    detail = f"{bj_w}-{bj_l}, intradiv. {bj_div_w}-{bj_div_l}"
-                    if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
-                    detail += f" vs. {opp_div_w}-{opp_div_l}"
-                    if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
+            elif rem == 0 and bj_w == bj_l:
+                if bj_div_w > opp_div_w + opp_div_rem:
+                    locked = True
+                    advantage = "Yes"
+                elif opp_div_w > bj_div_w + bj_div_rem:
+                    locked = True
+                    advantage = "No"
                 else:
-                    if bj_w == bj_l and rem > 0:
-                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
                     locked = False
-                    detail = f"{bj_w}-{bj_l} ({rem} rem), intradiv. {bj_div_w}-{bj_div_l}"
-                    if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
-                    detail += f" vs. {opp_div_w}-{opp_div_l}"
-                    if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
+                    advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                detail = f"{bj_w}-{bj_l}, intradiv. {bj_div_w}-{bj_div_l}"
+                if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
+                detail += f" vs. {opp_div_w}-{opp_div_l}"
+                if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
+            else:
+                if bj_w == bj_l and rem > 0:
+                    advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                locked = False
+                detail = f"{bj_w}-{bj_l} ({rem} rem), intradiv. {bj_div_w}-{bj_div_l}"
+                if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
+                detail += f" vs. {opp_div_w}-{opp_div_l}"
+                if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
                     
             tiebreakers_2way.append({"team": get_initial(team), "locked": locked, "advantage": advantage, "detail": detail})
             
