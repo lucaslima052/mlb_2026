@@ -498,7 +498,7 @@ HTML_TEMPLATE = """
             flex-direction: column;
             gap: 6px;
             border-right: 1px solid rgba(255,255,255,0.1);
-            padding-right: 5px;
+            padding-right: 20px;
             align-self: flex-start;
         }
         .tiebreaker-box {
@@ -540,9 +540,18 @@ HTML_TEMPLATE = """
         .status-white { color: #ffffff; font-weight: 600; }
 
         @media (max-width: 1024px) {
-            .layout { flex-direction: column; }
-            .col-extra, .col-standings, .col-games-container, .tiebreaker-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; max-width: 100%; }
-        }
+            .layout { 
+                flex-direction: column; 
+                align-items: stretch;
+            }
+            .col-extra, .col-standings, .col-games-container, .game-category-col, .tiebreaker-col { 
+                border-right: none; 
+                border-bottom: 1px solid rgba(255,255,255,0.1); 
+                padding-right: 0; 
+                padding-bottom: 12px; 
+                max-width: 100%; 
+                align-self: stretch;
+            }
     </style>
 </head>
 <body>
@@ -664,12 +673,12 @@ HTML_TEMPLATE = """
                         <span>
                             {% if tb.locked %}
                                 {% if tb.advantage == "Yes" %}
-                                    <span class="status-green">🔒 Yes</span>
+                                    <span class="status-green"> 🔒 Yes</span>
                                 {% else %}
-                                    <span class="status-red">🔒 No</span>
+                                    <span class="status-red"> 🔒 No</span>
                                 {% endif %}
                             {% else %}
-                                <span class="status-white">🤷 {{ tb.advantage }}</span>
+                                <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                             {% endif %}
                             <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </span>
@@ -692,12 +701,12 @@ HTML_TEMPLATE = """
                         <span>
                             {% if tb.locked %}
                                 {% if tb.advantage == "Yes" %}
-                                    <span class="status-green">🔒 Yes</span>
+                                    <span class="status-green"> 🔒 Yes</span>
                                 {% else %}
-                                    <span class="status-red">🔒 No</span>
+                                    <span class="status-red"> 🔒 No</span>
                                 {% endif %}
                             {% else %}
-                                <span class="status-white">🤷 {{ tb.advantage }}</span>
+                                <span class="status-white"> 🤷 {{ tb.advantage }}</span>
                             {% endif %}
                             <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </span>
