@@ -454,7 +454,7 @@ HTML_TEMPLATE = """
         .col-extra {
             display: flex;
             flex-direction: column;
-            gap: 0px;
+            gap: 18px;
         }
         .game-category-col, .tiebreaker-col {
             display: flex;
@@ -481,6 +481,11 @@ HTML_TEMPLATE = """
         .row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            color: #cbd5e1;
+        }
+        .row-tiebreaker {
+            display: flex;
             align-items: center;
             color: #cbd5e1;
         }
@@ -622,7 +627,7 @@ HTML_TEMPLATE = """
                 {% if tiebreakers_2way %}
                     {% for tb in tiebreakers_2way %}
                     <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
-                        <div class="row">
+                        <div class="row-tiebreaker">
                             <span><strong>Vs. {{ tb.team }}:</strong></span>
                             <span>
                                 {% if tb.locked %}
@@ -652,7 +657,7 @@ HTML_TEMPLATE = """
                 {% if tiebreakers_3way %}
                     {% for tb in tiebreakers_3way %}
                     <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
-                        <div class="row">
+                        <div class="row-tiebreaker">
                             <strong>{{ tb.teams }}:</strong>
                             {% if tb.locked %}
                                 {% if tb.advantage == "Yes" %}
