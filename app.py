@@ -478,7 +478,6 @@ HTML_TEMPLATE = """
             display: flex;
             flex-direction: column;
             gap: 8px;
-            overflow-x: auto;
         }
         .row {
             display: flex;
@@ -490,7 +489,8 @@ HTML_TEMPLATE = """
             display: flex;
             align-items: center;
             color: #cbd5e1;
-            white-space: nowrap;
+            white-space: normal;
+            flex-wrap: wrap;
         }
         .game {
             background: rgba(255, 255, 255, 0.04);
