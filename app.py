@@ -68,24 +68,33 @@ def get_data_dict():
     }
     
     try:
-        # --- 1. Fetch Division Standings & Calculate WC3 Gap ---
+        # --- 1. Fetch Division Standings & Calculate WC3 Gap & Intradivision Records ---
         rs_url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103&season={current_year}"
         res_rs = requests.get(rs_url, headers=HEADERS).json()
         
         if 'records' in res_rs:
             for record in res_rs['records']:
+                # Identify division to grab the correct split record for intradivision (vsEast, vsCentral, vsWest)
+                div_name = record.get('division', {}).get('name', '')
+                if 'East' in div_name: split_type = 'vsEast'
+                elif 'Central' in div_name: split_type = 'vsCentral'
+                elif 'West' in div_name: split_type = 'vsWest'
+                else: split_type = ''
+
                 team_records = record.get('teamRecords', [])
                 for i, team_data in enumerate(team_records):
                     raw_name = team_data.get('team', {}).get('name', '')
                     name = normalize_team_name(raw_name)
                     w = int(team_data.get('wins', 0))
                     l = int(team_data.get('losses', 0))
-                    div_record = team_data.get('records', {}).get('splitRecords', [])
-                    # Extract intradivision record if available
+                    
                     div_w, div_l = 0, 0
-                    for split in team_data.get('records', {}).get('divisionRecords', []):
-                        div_w = int(split.get('wins', 0))
-                        div_l = int(split.get('losses', 0))
+                    splits = team_data.get('records', {}).get('splitRecords', [])
+                    for s in splits:
+                        if s.get('type') == split_type:
+                            div_w = int(s.get('wins', 0))
+                            div_l = int(s.get('losses', 0))
+                            break
 
                     al_teams[name] = {
                         'wins': w,
@@ -193,37 +202,102 @@ def get_data_dict():
     except Exception as e:
         pass
 
-    # --- Fetch Head-to-Head & Tiebreakers for Blue Jays ---
+    # --- 3. Fetch Blue Jays Full Schedule for H2H Record Calculations ---
+    jays_h2h = {}
+    try:
+        jays_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&season={current_year}&teamId=141"
+        jays_sched = requests.get(jays_url, headers=HEADERS).json()
+        for d in jays_sched.get('dates', []):
+            for g in d.get('games', []):
+                away_team = normalize_team_name(g['teams']['away']['team']['name'])
+                home_team = normalize_team_name(g['teams']['home']['team']['name'])
+                
+                opp = away_team if home_team == "Toronto Blue Jays" else home_team if away_team == "Toronto Blue Jays" else None
+                if not opp:
+                    continue
+                    
+                if opp not in jays_h2h:
+                    jays_h2h[opp] = {'w': 0, 'l': 0, 'rem': 0}
+                    
+                status = g['status']['abstractGameState']
+                if status == 'Final':
+                    is_home = (home_team == "Toronto Blue Jays")
+                    a_score = g['teams']['away'].get('score', 0)
+                    h_score = g['teams']['home'].get('score', 0)
+                    
+                    if (is_home and h_score > a_score) or (not is_home and a_score > h_score):
+                        jays_h2h[opp]['w'] += 1
+                    else:
+                        jays_h2h[opp]['l'] += 1
+                elif status in ['Preview', 'Scheduled', 'Live']:
+                    jays_h2h[opp]['rem'] += 1
+    except:
+        pass
+
+    # --- 4. Process Tiebreakers ---
     tiebreakers_2way = []
     tiebreakers_3way = []
     try:
-        # Get Blue Jays team ID or query head-to-head records via schedule/standings
-        # For simplicity, we query games or compute from team records if available.
-        # Let's inspect head-to-head via MLB Schedule endpoint or head-to-head records.
         bj_name = "Toronto Blue Jays"
-        
-        # Determine prioritized target teams:
-        # a) Non-division leaders within 3 games of WC3 (critical)
-        # b) Division leaders within 3 games of WC3 (important)
         target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important'] and t != bj_name]
         
-        # Let's fetch head-to-head matchup records against target teams using MLB H2H or schedule parsing
-        # As an robust approximation using the stats api h2h or team vs team records:
         for team in target_teams:
-            # Fetch head-to-head records or calculate from schedule if possible.
-            # Fallback/Live structure calculation:
-            bj_wins, bj_losses, remaining_h2h = 0, 0, 0
-            # We can check schedule or standings headToHead if available, or compute from overall games.
-            # Let's query team vs team results or simulate cleanly:
+            h2h = jays_h2h.get(team, {'w': 0, 'l': 0, 'rem': 0})
+            bj_w, bj_l, rem = h2h['w'], h2h['l'], h2h['rem']
+            
+            # Intradivision stats (used as fallback tiebreaker if H2H is tied)
+            bj_div_w = al_teams.get(bj_name, {}).get('div_wins', 0)
+            bj_div_l = al_teams.get(bj_name, {}).get('div_losses', 0)
+            bj_div_rem = max(0, 52 - (bj_div_w + bj_div_l)) # 52 games against divisional opponents in balanced sched
+            
+            opp_div_w = al_teams.get(team, {}).get('div_wins', 0)
+            opp_div_l = al_teams.get(team, {}).get('div_losses', 0)
+            opp_div_rem = max(0, 52 - (opp_div_w + opp_div_l))
+            
+            # MLB Rule 1: Evaluate Head-to-Head 
+            if rem == 0 and bj_w != bj_l:
+                locked = True
+                advantage = "Yes" if bj_w > bj_l else "No"
+                detail = f"{bj_w}-{bj_l} record"
+            elif bj_w > bj_l + rem:
+                locked = True
+                advantage = "Yes"
+                detail = f"{bj_w}-{bj_l} record (clinched H2H)"
+            elif bj_l > bj_w + rem:
+                locked = True
+                advantage = "No"
+                detail = f"{bj_w}-{bj_l} record (lost H2H)"
+            else:
+                # MLB Rule 2: If H2H is tied, check Intradivision record
+                if rem == 0 and bj_w == bj_l:
+                    detail = f"H2H Tied ({bj_w}-{bj_l}), Intradivision: {bj_div_w}-{bj_div_l} ({bj_div_rem} rem) vs {opp_div_w}-{opp_div_l} ({opp_div_rem} rem)"
+                    
+                    if bj_div_w > opp_div_w + opp_div_rem:
+                        locked = True
+                        advantage = "Yes"
+                    elif opp_div_w > bj_div_w + bj_div_rem:
+                        locked = True
+                        advantage = "No"
+                    elif bj_div_rem == 0 and opp_div_rem == 0:
+                        locked = True
+                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Check Intraleague"
+                    else:
+                        locked = False
+                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                else:
+                    # H2H is undecided and games are remaining
+                    locked = False
+                    advantage = "Yes" if bj_w > bj_l else "No" if bj_l > bj_w else "Tied"
+                    detail = f"{bj_w}-{bj_l} record ({rem} games remaining)"
+                    
             tiebreakers_2way.append({
                 "team": get_nickname(team),
-                "locked": True if remaining_h2h == 0 else False,
-                "advantage": "Yes" if bj_wins >= bj_losses else "No",
-                "detail": f"{bj_wins}-{bj_losses} record ({remaining_h2h} games remaining)"
+                "locked": locked,
+                "advantage": advantage,
+                "detail": detail
             })
             
-        # 3-way tiebreakers combinations: Blue Jays + (Guardians or White Sox) + (Astros or Rangers)
-        # Filter groups ensuring division champions rule constraint:
+        # 3-way tiebreakers logic groupings
         div1_teams = [t for t in target_teams if al_teams.get(t, {}).get('is_leader')]
         non_div1_teams = [t for t in target_teams if not al_teams.get(t, {}).get('is_leader')]
         
@@ -233,12 +307,12 @@ def get_data_dict():
                     "teams": f"Vs. {get_nickname(d_team)} & {get_nickname(nd_team)}",
                     "locked": False,
                     "advantage": "Pending",
-                    "detail": "Combined H2H & intradivision comparison active"
+                    "detail": "Combined H2H winning percentage amongst the 3 clubs."
                 })
     except:
         pass
 
-    # --- Fetch Games ---
+    # --- 5. Fetch Today's Games ---
     sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={today}&hydrate=linescore"
     try:
         sched_res = requests.get(sched_url, headers=HEADERS).json()
