@@ -494,16 +494,15 @@ HTML_TEMPLATE = """
             flex-direction: column;
             gap: 6px;
             border-right: 1px solid rgba(255,255,255,0.1);
-            padding-right: 20px;
+            padding-right: 5px;
         }
         .tiebreaker-box {
-            background: rgba(255, 255, 255, 0.03);
-            padding: 10px 14px;
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 6px 10px;
+            border-radius: 6px;
             border: 1px solid rgba(255,255,255,0.08);
             display: flex;
             flex-direction: column;
-            gap: 8px;
         }
         .row {
             display: flex;
