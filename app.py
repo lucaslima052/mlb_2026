@@ -9,6 +9,11 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
+# Division Mappings for Intradivisional Tiebreaker Calculations
+AL_EAST = ["Toronto Blue Jays", "New York Yankees", "Boston Red Sox", "Baltimore Orioles", "Tampa Bay Rays"]
+AL_CENTRAL = ["Chicago White Sox", "Cleveland Guardians", "Detroit Tigers", "Kansas City Royals", "Minnesota Twins"]
+AL_WEST = ["Houston Astros", "Texas Rangers", "Seattle Mariners", "Los Angeles Angels", "Sacramento Athletics"]
+
 OUT_OF_CONTENTION_TEAMS = [
     "Kansas City Royals", "Los Angeles Angels", "Sacramento Athletics"
 ]
@@ -43,6 +48,24 @@ def get_nickname(full_name):
                 return " ".join(parts[-2:])
     return parts[-1]
 
+def get_division(team):
+    if team in AL_EAST: return AL_EAST
+    if team in AL_CENTRAL: return AL_CENTRAL
+    if team in AL_WEST: return AL_WEST
+    return []
+
+def get_intradivision_record(team, h2h_matrix):
+    """Calculates a team's record against its own division."""
+    div_teams = get_division(team)
+    w, l, rem = 0, 0, 0
+    for opp in div_teams:
+        if opp != team:
+            record = h2h_matrix.get(team, {}).get(opp, {'w':0, 'l':0, 'rem':0})
+            w += record['w']
+            l += record['l']
+            rem += record['rem']
+    return w, l, rem
+
 def get_data_dict():
     current_year = datetime.today().year
 
@@ -68,40 +91,22 @@ def get_data_dict():
     }
     
     try:
-        # --- 1. Fetch Division Standings & Calculate WC3 Gap & Intradivision Records ---
+        # --- 1. Fetch Division Standings & Calculate WC3 Gap ---
         rs_url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103&season={current_year}"
         res_rs = requests.get(rs_url, headers=HEADERS).json()
         
         if 'records' in res_rs:
             for record in res_rs['records']:
-                # Identify division to grab the correct split record for intradivision (vsEast, vsCentral, vsWest)
-                div_name = record.get('division', {}).get('name', '')
-                if 'East' in div_name: split_type = 'vsEast'
-                elif 'Central' in div_name: split_type = 'vsCentral'
-                elif 'West' in div_name: split_type = 'vsWest'
-                else: split_type = ''
-
                 team_records = record.get('teamRecords', [])
                 for i, team_data in enumerate(team_records):
                     raw_name = team_data.get('team', {}).get('name', '')
                     name = normalize_team_name(raw_name)
                     w = int(team_data.get('wins', 0))
                     l = int(team_data.get('losses', 0))
-                    
-                    div_w, div_l = 0, 0
-                    splits = team_data.get('records', {}).get('splitRecords', [])
-                    for s in splits:
-                        if s.get('type') == split_type:
-                            div_w = int(s.get('wins', 0))
-                            div_l = int(s.get('losses', 0))
-                            break
-
                     al_teams[name] = {
                         'wins': w,
                         'losses': l,
-                        'is_leader': (i == 0),
-                        'div_wins': div_w,
-                        'div_losses': div_l
+                        'is_leader': (i == 0)
                     }
                     
         non_leaders = [ {'name': n, 'wins': s['wins'], 'losses': s['losses']} for n, s in al_teams.items() if not s['is_leader'] ]
@@ -202,35 +207,37 @@ def get_data_dict():
     except Exception as e:
         pass
 
-    # --- 3. Fetch Blue Jays Full Schedule for H2H Record Calculations ---
-    jays_h2h = {}
+    # --- 3. Build Global H2H Matrix via Full Season Schedule ---
+    h2h_matrix = {}
     try:
-        jays_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&season={current_year}&teamId=141"
-        jays_sched = requests.get(jays_url, headers=HEADERS).json()
-        for d in jays_sched.get('dates', []):
+        full_sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&season={current_year}"
+        full_sched = requests.get(full_sched_url, headers=HEADERS).json()
+        for d in full_sched.get('dates', []):
             for g in d.get('games', []):
-                away_team = normalize_team_name(g['teams']['away']['team']['name'])
-                home_team = normalize_team_name(g['teams']['home']['team']['name'])
+                away = normalize_team_name(g['teams']['away']['team']['name'])
+                home = normalize_team_name(g['teams']['home']['team']['name'])
                 
-                opp = away_team if home_team == "Toronto Blue Jays" else home_team if away_team == "Toronto Blue Jays" else None
-                if not opp:
-                    continue
-                    
-                if opp not in jays_h2h:
-                    jays_h2h[opp] = {'w': 0, 'l': 0, 'rem': 0}
-                    
-                status = g['status']['abstractGameState']
-                if status == 'Final':
-                    is_home = (home_team == "Toronto Blue Jays")
+                if away not in h2h_matrix: h2h_matrix[away] = {}
+                if home not in h2h_matrix[away]: h2h_matrix[away][home] = {'w': 0, 'l': 0, 'rem': 0}
+                
+                if home not in h2h_matrix: h2h_matrix[home] = {}
+                if away not in h2h_matrix[home]: h2h_matrix[home][away] = {'w': 0, 'l': 0, 'rem': 0}
+                
+                status_track = g['status']['abstractGameState']
+                detailed_state = g['status'].get('detailedState', '')
+                
+                if detailed_state in ['Final', 'Game Over', 'Completed Early']:
                     a_score = g['teams']['away'].get('score', 0)
                     h_score = g['teams']['home'].get('score', 0)
-                    
-                    if (is_home and h_score > a_score) or (not is_home and a_score > h_score):
-                        jays_h2h[opp]['w'] += 1
-                    else:
-                        jays_h2h[opp]['l'] += 1
-                elif status in ['Preview', 'Scheduled', 'Live']:
-                    jays_h2h[opp]['rem'] += 1
+                    if a_score > h_score:
+                        h2h_matrix[away][home]['w'] += 1
+                        h2h_matrix[home][away]['l'] += 1
+                    elif h_score > a_score:
+                        h2h_matrix[home][away]['w'] += 1
+                        h2h_matrix[away][home]['l'] += 1
+                elif detailed_state not in ['Postponed', 'Cancelled'] and status_track in ['Preview', 'Scheduled', 'Live']:
+                    h2h_matrix[away][home]['rem'] += 1
+                    h2h_matrix[home][away]['rem'] += 1
     except:
         pass
 
@@ -241,18 +248,13 @@ def get_data_dict():
         bj_name = "Toronto Blue Jays"
         target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important'] and t != bj_name]
         
+        # 2-Way Tiebreakers
         for team in target_teams:
-            h2h = jays_h2h.get(team, {'w': 0, 'l': 0, 'rem': 0})
+            h2h = h2h_matrix.get(bj_name, {}).get(team, {'w': 0, 'l': 0, 'rem': 0})
             bj_w, bj_l, rem = h2h['w'], h2h['l'], h2h['rem']
             
-            # Intradivision stats (used as fallback tiebreaker if H2H is tied)
-            bj_div_w = al_teams.get(bj_name, {}).get('div_wins', 0)
-            bj_div_l = al_teams.get(bj_name, {}).get('div_losses', 0)
-            bj_div_rem = max(0, 52 - (bj_div_w + bj_div_l)) # 52 games against divisional opponents in balanced sched
-            
-            opp_div_w = al_teams.get(team, {}).get('div_wins', 0)
-            opp_div_l = al_teams.get(team, {}).get('div_losses', 0)
-            opp_div_rem = max(0, 52 - (opp_div_w + opp_div_l))
+            bj_div_w, bj_div_l, bj_div_rem = get_intradivision_record(bj_name, h2h_matrix)
+            opp_div_w, opp_div_l, opp_div_rem = get_intradivision_record(team, h2h_matrix)
             
             # MLB Rule 1: Evaluate Head-to-Head 
             if rem == 0 and bj_w != bj_l:
@@ -262,33 +264,44 @@ def get_data_dict():
             elif bj_w > bj_l + rem:
                 locked = True
                 advantage = "Yes"
-                detail = f"{bj_w}-{bj_l} record (clinched H2H)"
+                detail = f"{bj_w}-{bj_l} record"
+                if rem > 0: detail += f" ({rem} rem)"
             elif bj_l > bj_w + rem:
                 locked = True
                 advantage = "No"
-                detail = f"{bj_w}-{bj_l} record (lost H2H)"
+                detail = f"{bj_w}-{bj_l} record"
+                if rem > 0: detail += f" ({rem} rem)"
             else:
-                # MLB Rule 2: If H2H is tied, check Intradivision record
+                # MLB Rule 2: If H2H is mathematically tied, check Intradivision record
                 if rem == 0 and bj_w == bj_l:
-                    detail = f"H2H Tied ({bj_w}-{bj_l}), Intradivision: {bj_div_w}-{bj_div_l} ({bj_div_rem} rem) vs {opp_div_w}-{opp_div_l} ({opp_div_rem} rem)"
+                    detail = f"{bj_w}-{bj_l} record, "
                     
                     if bj_div_w > opp_div_w + opp_div_rem:
                         locked = True
                         advantage = "Yes"
+                        detail += "clinched better intradivision: "
                     elif opp_div_w > bj_div_w + bj_div_rem:
                         locked = True
                         advantage = "No"
+                        detail += "lost intradivision: "
                     elif bj_div_rem == 0 and opp_div_rem == 0:
                         locked = True
                         advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Check Intraleague"
+                        detail += "better intradivision: " if advantage == "Yes" else "worse intradivision: " if advantage == "No" else "tied intradivision: "
                     else:
                         locked = False
                         advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                        detail += "better intradivision: " if advantage == "Yes" else "worse intradivision: " if advantage == "No" else "tied intradivision: "
+                        
+                    detail += f"{bj_div_w}-{bj_div_l}"
+                    if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
+                    detail += f" vs. {opp_div_w}-{opp_div_l}"
+                    if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
                 else:
-                    # H2H is undecided and games are remaining
+                    # Undecided H2H and games remaining
                     locked = False
                     advantage = "Yes" if bj_w > bj_l else "No" if bj_l > bj_w else "Tied"
-                    detail = f"{bj_w}-{bj_l} record ({rem} games remaining)"
+                    detail = f"{bj_w}-{bj_l} record ({rem} rem)"
                     
             tiebreakers_2way.append({
                 "team": get_nickname(team),
@@ -297,17 +310,63 @@ def get_data_dict():
                 "detail": detail
             })
             
-        # 3-way tiebreakers logic groupings
-        div1_teams = [t for t in target_teams if al_teams.get(t, {}).get('is_leader')]
-        non_div1_teams = [t for t in target_teams if not al_teams.get(t, {}).get('is_leader')]
+        # 3-Way Tiebreakers: Blue Jays AND (AL Central targets) AND (AL West targets)
+        cen_tracked = [t for t in target_teams if t in AL_CENTRAL]
+        wes_tracked = [t for t in target_teams if t in AL_WEST]
         
-        for d_team in div1_teams:
-            for nd_team in non_div1_teams:
+        for c_team in cen_tracked:
+            for w_team in wes_tracked:
+                teams = [bj_name, c_team, w_team]
+                stats = {t: {'w': 0, 'l': 0, 'rem': 0} for t in teams}
+                
+                pairs = [(bj_name, c_team), (bj_name, w_team), (c_team, w_team)]
+                total_rem = 0
+                for t1, t2 in pairs:
+                    record = h2h_matrix.get(t1, {}).get(t2, {'w':0, 'l':0, 'rem':0})
+                    stats[t1]['w'] += record['w']
+                    stats[t1]['l'] += record['l']
+                    stats[t1]['rem'] += record['rem']
+                    
+                    stats[t2]['w'] += record['l']
+                    stats[t2]['l'] += record['w']
+                    stats[t2]['rem'] += record['rem']
+                    
+                    total_rem += record['rem']
+                
+                for t in teams:
+                    total_games = stats[t]['w'] + stats[t]['l']
+                    stats[t]['pct'] = stats[t]['w'] / total_games if total_games > 0 else 0
+                    
+                sorted_teams = sorted(teams, key=lambda x: (stats[x]['pct'], stats[x]['w']), reverse=True)
+                rank = sorted_teams.index(bj_name) + 1
+                
+                if total_rem == 0:
+                    locked = True
+                    if rank == 1: advantage = "1st Seed"
+                    elif rank == 2: advantage = "2nd Seed"
+                    else: advantage = "3rd Seed"
+                else:
+                    locked = False
+                    if stats[bj_name]['pct'] == stats[sorted_teams[0]]['pct'] and rank != 1:
+                        advantage = "Tied 1st"
+                    else:
+                        if rank == 1: advantage = "1st"
+                        elif rank == 2: advantage = "2nd"
+                        else: advantage = "3rd"
+                        
+                bj_rec = f"{stats[bj_name]['w']}-{stats[bj_name]['l']}"
+                c_rec = f"{stats[c_team]['w']}-{stats[c_team]['l']}"
+                w_rec = f"{stats[w_team]['w']}-{stats[w_team]['l']}"
+                
+                detail = f"Combined H2H: TOR {bj_rec}, {get_nickname(c_team)} {c_rec}, {get_nickname(w_team)} {w_rec}"
+                if total_rem > 0:
+                    detail += f" ({total_rem} rem among trio)"
+                
                 tiebreakers_3way.append({
-                    "teams": f"Vs. {get_nickname(d_team)} & {get_nickname(nd_team)}",
-                    "locked": False,
-                    "advantage": "Pending",
-                    "detail": "Combined H2H winning percentage amongst the 3 clubs."
+                    "teams": f"Vs. {get_nickname(c_team)} & {get_nickname(w_team)}",
+                    "locked": locked,
+                    "advantage": advantage,
+                    "detail": detail
                 })
     except:
         pass
@@ -667,7 +726,7 @@ HTML_TEMPLATE = """
 
                 <!-- 3-Way Tiebreakers -->
                 <div class="tiebreaker-section">
-                    <div class="cat-header" style="color: #38bdf8;">3-Way Tiebreakers (H2H & Intradivision)</div>
+                    <div class="cat-header" style="color: #38bdf8;">3-Way Tiebreakers (H2H Win %)</div>
                     {% if tiebreakers_3way %}
                         {% for tb in tiebreakers_3way %}
                         <div class="row">
