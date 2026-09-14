@@ -300,7 +300,6 @@ def get_data_dict():
                 c_base_w, c_base_l = base_TC_l + base_CW_w, base_TC_w + base_CW_l
                 w_base_w, w_base_l = base_TW_l + base_CW_l, base_TW_w + base_CW_w
                 
-                # Sort records from left to right based on highest win-loss percentage
                 team_data_list = [
                     {'name': f'<span class="highlight-jays">{bj_init}</span>', 'w': t_base_w, 'l': t_base_l, 'pct': t_base_w / max(1, t_base_w + t_base_l)},
                     {'name': c_init, 'w': c_base_w, 'l': c_base_l, 'pct': c_base_w / max(1, c_base_w + c_base_l)},
@@ -438,18 +437,10 @@ HTML_TEMPLATE = """
             color: #38bdf8;
         }
         h2 {
-            font-size: 13px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
-            color: #facc15;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .cat-header {
             font-size: 12px;
             font-weight: 700;
-            color: #facc15;
             margin: 0 0 6px 0;
+            color: #facc15;
             padding-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -484,6 +475,8 @@ HTML_TEMPLATE = """
             align-items: flex-start;
             flex-wrap: wrap;
             flex: 3 1 750px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding-right: 20px;
         }
         .game-category-col {
             flex: 1 1 250px;
@@ -493,23 +486,15 @@ HTML_TEMPLATE = """
             flex-direction: column;
             gap: 6px;
         }
-        .col-tiebreakers {
-            flex: 1 1 100%;
-            margin-top: 16px;
-            border-top: 1px solid rgba(255,255,255,0.15);
-            padding-top: 12px;
-        }
-        .tiebreaker-grid {
+        .tiebreaker-col {
+            flex: 1 1 250px;
+            min-width: 250px;
+            max-width: 300px;
             display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .tiebreaker-section {
-            flex: 1 1 450px;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.08);
+            flex-direction: column;
+            gap: 6px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding-right: 20px;
         }
         .row {
             display: flex;
@@ -541,7 +526,7 @@ HTML_TEMPLATE = """
 
         @media (max-width: 1024px) {
             .layout { flex-direction: column; }
-            .col-extra, .col-standings { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; max-width: 100%; }
+            .col-extra, .col-standings, .col-games-container, .tiebreaker-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-right: 0; padding-bottom: 12px; max-width: 100%; }
         }
     </style>
 </head>
@@ -602,7 +587,7 @@ HTML_TEMPLATE = """
             {% set rList = games.relevant %}
 
             <div class="game-category-col">
-                <div class="cat-header">Critical Games</div>
+                <h2>Critical Games</h2>
                 {% if cList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -619,7 +604,7 @@ HTML_TEMPLATE = """
             </div>
 
             <div class="game-category-col">
-                <div class="cat-header">Important Games</div>
+                <h2>Important Games</h2>
                 {% if iList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -636,7 +621,7 @@ HTML_TEMPLATE = """
             </div>
 
             <div class="game-category-col">
-                <div class="cat-header">Other Relevant Games</div>
+                <h2>Other Relevant Games</h2>
                 {% if rList|length == 0 %}
                     <div style="color: #64748b; font-size: 11px;">None today</div>
                 {% else %}
@@ -653,64 +638,55 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
-        <!-- SECTION 4: TIE-BREAKERS TRACKER -->
-        <div class="col-tiebreakers">
-            <h2>Playoff Tie-Breakers Tracking</h2>
-            <div class="tiebreaker-grid">
-                
-                <!-- 2-Way Tiebreakers -->
-                <div class="tiebreaker-section">
-                    <div class="cat-header" style="color: #38bdf8;">2-Way Tiebreakers (Head-to-Head)</div>
-                    {% if tiebreakers_2way %}
-                        {% for tb in tiebreakers_2way %}
-                        <div class="row">
-                            <span>Vs. {{ tb.team }}:</span>
-                            <span>
-                                {% if tb.locked %}
-                                    {% if tb.advantage == "Yes" %}
-                                        <span class="status-green">🔒 Yes</span>
-                                    {% else %}
-                                        <span class="status-red">🔒 No</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="status-white">🔓 {{ tb.advantage }}</span>
-                                {% endif %}
-                                — {{ tb.detail | safe }}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div style="color: #64748b; font-size: 11px;">Evaluating active matchups...</div>
-                    {% endif %}
+        <!-- COLUMNS 4 & 5: TIE-BREAKERS TRACKER (Split into 2 standalone columns) -->
+        <div class="tiebreaker-col">
+            <h2>2-Way Tiebreakers</h2>
+            {% if tiebreakers_2way %}
+                {% for tb in tiebreakers_2way %}
+                <div class="game">
+                    <div><strong>Vs. {{ tb.team }}</strong></div>
+                    <div>
+                        {% if tb.locked %}
+                            {% if tb.advantage == "Yes" %}
+                                <span class="status-green">🔒 Yes</span>
+                            {% else %}
+                                <span class="status-red">🔒 No</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="status-white">❓ {{ tb.advantage }}</span>
+                        {% endif %}
+                        — {{ tb.detail | safe }}
+                    </div>
                 </div>
+                {% endfor %}
+            {% else %}
+                <div style="color: #64748b; font-size: 11px;">Evaluating active matchups...</div>
+            {% endif %}
+        </div>
 
-                <!-- 3-Way Tiebreakers -->
-                <div class="tiebreaker-section">
-                    <div class="cat-header" style="color: #38bdf8;">3-Way Tiebreakers (H2H Win %)</div>
-                    {% if tiebreakers_3way %}
-                        {% for tb in tiebreakers_3way %}
-                        <div class="row">
-                            <span>{{ tb.teams }}:</span>
-                            <span>
-                                {% if tb.locked %}
-                                    {% if tb.advantage == "Yes" %}
-                                        <span class="status-green">🔒 Yes</span>
-                                    {% else %}
-                                        <span class="status-red">🔒 No</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="status-white">🔓 {{ tb.advantage }}</span>
-                                {% endif %}
-                                — {{ tb.detail | safe }}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div style="color: #64748b; font-size: 11px;">No active 3-way combinations</div>
-                    {% endif %}
+        <div class="tiebreaker-col" style="border-right: none;">
+            <h2>3-Way Tiebreakers</h2>
+            {% if tiebreakers_3way %}
+                {% for tb in tiebreakers_3way %}
+                <div class="game">
+                    <div><strong>{{ tb.teams }}</strong></div>
+                    <div>
+                        {% if tb.locked %}
+                            {% if tb.advantage == "Yes" %}
+                                <span class="status-green">🔒 Yes</span>
+                            {% else %}
+                                <span class="status-red">🔒 No</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="status-white">❓ {{ tb.advantage }}</span>
+                        {% endif %}
+                        — {{ tb.detail | safe }}
+                    </div>
                 </div>
-
-            </div>
+                {% endfor %}
+            {% else %}
+                <div style="color: #64748b; font-size: 11px;">No active 3-way combinations</div>
+            {% endif %}
         </div>
 
     </div>
