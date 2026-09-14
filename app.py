@@ -227,9 +227,16 @@ def get_data_dict():
                 if rem > 0: detail += f" ({rem} rem)"
             else:
                 if rem == 0 and bj_w == bj_l:
-                    locked = False
-                    advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
-                    detail = f"{bj_w}-{bj_l}, intradivision {bj_div_w}-{bj_div_l}"
+                    if bj_div_w > opp_div_w + opp_div_rem:
+                        locked = True
+                        advantage = "Yes"
+                    elif opp_div_w > bj_div_w + bj_div_rem:
+                        locked = True
+                        advantage = "No"
+                    else:
+                        locked = False
+                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                    detail = f"{bj_w}-{bj_l}, intradiv. {bj_div_w}-{bj_div_l}"
                     if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
                     detail += f" vs. {opp_div_w}-{opp_div_l}"
                     if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
@@ -237,7 +244,10 @@ def get_data_dict():
                     if bj_w == bj_l and rem > 0:
                         advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
                     locked = False
-                    detail = f"{bj_w}-{bj_l}, intradivision {bj_div_w}-{bj_div_l} ({bj_div_rem} rem) vs {opp_div_w}-{opp_div_l} ({opp_div_rem} rem)"
+                    detail = f"{bj_w}-{bj_l} ({rem} rem), intradiv. {bj_div_w}-{bj_div_l}"
+                    if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
+                    detail += f" vs. {opp_div_w}-{opp_div_l}"
+                    if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
                     
             tiebreakers_2way.append({"team": get_initial(team), "locked": locked, "advantage": advantage, "detail": detail})
             
