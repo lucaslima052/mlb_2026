@@ -118,7 +118,7 @@ def get_data_dict():
             if stats['is_leader']:
                 if abs(diff) <= 3.0: team_categories[name] = 'important'; tracked_teams.add(name)
             else:
-                if abs(diff) <= 3.0: team_categories[name] = 'critical'; tracked_teams.add(name)
+                if abs(diff) <= 4.0: team_categories[name] = 'critical'; tracked_teams.add(name)
                 elif abs(diff) <= 6.0: team_categories[name] = 'relevant'; tracked_teams.add(name)
                 elif diff > 6.0: team_categories[name] = 'ahead'; wc_ahead_teams.add(name)
                 else: out_of_contention_teams.add(name)
