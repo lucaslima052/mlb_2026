@@ -97,7 +97,6 @@ def get_data_dict():
     games_out = {"critical": [], "important": [], "relevant": []}
     
     try:
-        # --- 1. Fetch Division Standings & Calculate Categories ---
         rs_url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103&season={current_year}"
         res_rs = requests.get(rs_url, headers=HEADERS).json()
         
@@ -144,7 +143,6 @@ def get_data_dict():
             dl['rank'], dl['record'] = i + 1, f"{dl['wins']}-{dl['losses']}"
             leaders_ranking[dl['team']] = dl['rank']
 
-        # --- 2. Fetch Wild Card Standings ---
         wc_url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103&season={current_year}&standingsTypes=wildCard"
         res_wc = requests.get(wc_url, headers=HEADERS).json()
         if 'records' in res_wc:
@@ -167,7 +165,6 @@ def get_data_dict():
     except:
         pass
 
-    # --- 3. Build Global H2H Matrix via Full Season Schedule (Regular Season Only) ---
     h2h_matrix = {}
     try:
         full_sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&season={current_year}&gameType=R"
@@ -200,7 +197,6 @@ def get_data_dict():
     except:
         pass
 
-    # --- 4. Process Tiebreakers ---
     tiebreakers_2way = []
     tiebreakers_3way = []
     try:
@@ -231,26 +227,17 @@ def get_data_dict():
                 if rem > 0: detail += f" ({rem} rem)"
             else:
                 if rem == 0 and bj_w == bj_l:
-                    detail = f"{bj_w}-{bj_l} record, "
-                    if bj_div_w > opp_div_w + opp_div_rem:
-                        locked, advantage = True, "Yes"
-                        detail += "better intradivision: "
-                    elif opp_div_w > bj_div_w + bj_div_rem:
-                        locked, advantage = True, "No"
-                        detail += "worse intradivision: "
-                    else:
-                        locked = False
-                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
-                        detail += "better intradivision: " if advantage == "Yes" else "worse intradivision: " if advantage == "No" else "tied intradivision: "
-                        
-                    detail += f"{bj_div_w}-{bj_div_l}"
+                    locked = False
+                    advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                    detail = f"{bj_w}-{bj_l}, intradivision {bj_div_w}-{bj_div_l}"
                     if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
                     detail += f" vs. {opp_div_w}-{opp_div_l}"
                     if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
                 else:
+                    if bj_w == bj_l and rem > 0:
+                        advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
                     locked = False
-                    advantage = "Yes" if bj_w > bj_l else "No" if bj_l > bj_w else "Tied"
-                    detail = f"{bj_w}-{bj_l} record ({rem} rem)"
+                    detail = f"{bj_w}-{bj_l}, intradivision {bj_div_w}-{bj_div_l} ({bj_div_rem} rem) vs {opp_div_w}-{opp_div_l} ({opp_div_rem} rem)"
                     
             tiebreakers_2way.append({"team": get_initial(team), "locked": locked, "advantage": advantage, "detail": detail})
             
@@ -303,7 +290,16 @@ def get_data_dict():
                 c_base_w, c_base_l = base_TC_l + base_CW_w, base_TC_w + base_CW_l
                 w_base_w, w_base_l = base_TW_l + base_CW_l, base_TW_w + base_CW_w
                 
-                detail = f"{bj_init} {t_base_w}-{t_base_l}, {c_init} {c_base_w}-{c_base_l}, {w_init} {w_base_w}-{w_base_l}"
+                # Sort records from left to right based on highest win-loss percentage
+                team_data_list = [
+                    {'name': f'<span class="highlight-jays">{bj_init}</span>', 'w': t_base_w, 'l': t_base_l, 'pct': t_base_w / max(1, t_base_w + t_base_l)},
+                    {'name': c_init, 'w': c_base_w, 'l': c_base_l, 'pct': c_base_w / max(1, c_base_w + c_base_l)},
+                    {'name': w_init, 'w': w_base_w, 'l': w_base_l, 'pct': w_base_w / max(1, w_base_w + w_base_l)}
+                ]
+                team_data_list.sort(key=lambda x: (x['pct'], x['w']), reverse=True)
+                
+                detail_parts = [f"{item['name']} {item['w']}-{item['l']}" for item in team_data_list]
+                detail = ", ".join(detail_parts)
                 if total_rem > 0: detail += f" ({total_rem} rem)"
                 
                 locked = False
@@ -325,14 +321,13 @@ def get_data_dict():
                 if abs(w_pct - max_pct) < 0.001: curr_leaders.append('W')
 
                 if len(curr_leaders) == 2 and 'T' in curr_leaders:
-                    if 'C' in curr_leaders: detail += f" (See {bj_init} vs {c_init} H2H)"
-                    if 'W' in curr_leaders: detail += f" (See {bj_init} vs {w_init} H2H)"
+                    if 'C' in curr_leaders or 'W' in curr_leaders: 
+                        detail += " (See H2H)"
                         
                 tiebreakers_3way.append({"teams": f"Vs. {c_init} & {w_init}", "locked": locked, "advantage": advantage, "detail": detail})
     except:
         pass
 
-    # --- 5. Fetch Today's Games ---
     try:
         sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={today}&hydrate=linescore"
         sched_res = requests.get(sched_url, headers=HEADERS).json()
@@ -670,7 +665,7 @@ HTML_TEMPLATE = """
                                 {% else %}
                                     <span class="status-white">🔓 {{ tb.advantage }}</span>
                                 {% endif %}
-                                — {{ tb.detail }}
+                                — {{ tb.detail | safe }}
                             </span>
                         </div>
                         {% endfor %}
@@ -696,7 +691,7 @@ HTML_TEMPLATE = """
                                 {% else %}
                                     <span class="status-white">🔓 {{ tb.advantage }}</span>
                                 {% endif %}
-                                — {{ tb.detail }}
+                                — {{ tb.detail | safe }}
                             </span>
                         </div>
                         {% endfor %}
