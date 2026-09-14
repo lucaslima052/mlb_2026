@@ -118,7 +118,7 @@ def get_data_dict():
             if stats['is_leader']:
                 if abs(diff) <= 3.0: team_categories[name] = 'important'; tracked_teams.add(name)
             else:
-                if abs(diff) <= 3.0: team_categories[name] = 'critical'; tracked_teams.add(name)
+                if abs(diff) <= 4.0: team_categories[name] = 'critical'; tracked_teams.add(name)
                 elif abs(diff) <= 6.0: team_categories[name] = 'relevant'; tracked_teams.add(name)
                 elif diff > 6.0: team_categories[name] = 'ahead'; wc_ahead_teams.add(name)
                 else: out_of_contention_teams.add(name)
@@ -250,59 +250,63 @@ def get_data_dict():
                     
             tiebreakers_2way.append({"team": get_initial(team), "locked": locked, "advantage": advantage, "detail": detail})
             
-        # --- 3-Way Tiebreakers ---
-        cen_tracked = [t for t in target_teams if t in AL_CENTRAL]
-        wes_tracked = [t for t in target_teams if t in AL_WEST]
-        
-        for c_team in cen_tracked:
-            for w_team in wes_tracked:
-                base_TC_w = h2h_matrix.get(bj_name, {}).get(c_team, {}).get('w', 0)
-                base_TC_l = h2h_matrix.get(bj_name, {}).get(c_team, {}).get('l', 0)
-                base_TW_w = h2h_matrix.get(bj_name, {}).get(w_team, {}).get('w', 0)
-                base_TW_l = h2h_matrix.get(bj_name, {}).get(w_team, {}).get('l', 0)
-                base_CW_w = h2h_matrix.get(c_team, {}).get(w_team, {}).get('w', 0)
-                base_CW_l = h2h_matrix.get(c_team, {}).get(w_team, {}).get('l', 0)
+        # --- 3-Way Tiebreakers (Filtered: max 1 team per division to prevent intra-divisional conflicts) ---
+        for i in range(len(target_teams)):
+            for j in range(i + 1, len(target_teams)):
+                team1 = target_teams[i]
+                team2 = target_teams[j]
                 
-                rem_TC = h2h_matrix.get(bj_name, {}).get(c_team, {}).get('rem', 0)
-                rem_TW = h2h_matrix.get(bj_name, {}).get(w_team, {}).get('rem', 0)
-                rem_CW = h2h_matrix.get(c_team, {}).get(w_team, {}).get('rem', 0)
+                # Disallow pairing two teams from the same division (e.g. two AL East teams or two AL West teams)
+                if get_division(team1) == get_division(team2):
+                    continue
+                
+                base_T1_w = h2h_matrix.get(bj_name, {}).get(team1, {}).get('w', 0)
+                base_T1_l = h2h_matrix.get(bj_name, {}).get(team1, {}).get('l', 0)
+                base_T2_w = h2h_matrix.get(bj_name, {}).get(team2, {}).get('w', 0)
+                base_T2_l = h2h_matrix.get(bj_name, {}).get(team2, {}).get('l', 0)
+                base_12_w  = h2h_matrix.get(team1, {}).get(team2, {}).get('w', 0)
+                base_12_l  = h2h_matrix.get(team1, {}).get(team2, {}).get('l', 0)
+                
+                rem_T1 = h2h_matrix.get(bj_name, {}).get(team1, {}).get('rem', 0)
+                rem_T2 = h2h_matrix.get(bj_name, {}).get(team2, {}).get('rem', 0)
+                rem_12  = h2h_matrix.get(team1, {}).get(team2, {}).get('rem', 0)
                 
                 can_win, can_lose = False, False
                 
-                for i in range(rem_TC + 1):
-                    for j in range(rem_TW + 1):
-                        for k in range(rem_CW + 1):
-                            t_w = (base_TC_w + i) + (base_TW_w + j)
-                            t_l = (base_TC_l + (rem_TC - i)) + (base_TW_l + (rem_TW - j))
-                            c_w = (base_TC_l + (rem_TC - i)) + (base_CW_w + k)
-                            c_l = (base_TC_w + i) + (base_CW_l + (rem_CW - k))
-                            w_w = (base_TW_l + (rem_TW - j)) + (base_CW_l + (rem_CW - k))
-                            w_l = (base_TW_w + j) + (base_CW_w + k)
+                for x in range(rem_T1 + 1):
+                    for y in range(rem_T2 + 1):
+                        for z in range(rem_12 + 1):
+                            t_w = (base_T1_w + x) + (base_T2_w + y)
+                            t_l = (base_T1_l + (rem_T1 - x)) + (base_T2_l + (rem_T2 - y))
+                            team1_w = (base_T1_l + (rem_T1 - x)) + (base_12_w + z)
+                            team1_l = (base_T1_w + x) + (base_12_l + (rem_12 - z))
+                            team2_w = (base_T2_l + (rem_T2 - y)) + (base_12_l + (rem_12 - z))
+                            team2_l = (base_T2_w + y) + (base_12_w + z)
                             
                             t_pct = t_w / (t_w + t_l) if (t_w+t_l) > 0 else 0
-                            c_pct = c_w / (c_w + c_l) if (c_w+c_l) > 0 else 0
-                            w_pct = w_w / (w_w + w_l) if (w_w+w_l) > 0 else 0
+                            team1_pct = team1_w / (team1_w + team1_l) if (team1_w+team1_l) > 0 else 0
+                            team2_pct = team2_w / (team2_w + team2_l) if (team2_w+team2_l) > 0 else 0
                             
-                            max_pct = max(t_pct, c_pct, w_pct)
+                            max_pct = max(t_pct, team1_pct, team2_pct)
                             leaders = []
                             if abs(t_pct - max_pct) < 0.001: leaders.append('T')
-                            if abs(c_pct - max_pct) < 0.001: leaders.append('C')
-                            if abs(w_pct - max_pct) < 0.001: leaders.append('W')
+                            if abs(team1_pct - max_pct) < 0.001: leaders.append('1')
+                            if abs(team2_pct - max_pct) < 0.001: leaders.append('2')
                             
                             if 'T' not in leaders: can_lose = True
                             elif len(leaders) == 1: can_win = True
                             else: can_win = True; can_lose = True
                 
-                total_rem = rem_TC + rem_TW + rem_CW
-                bj_init, c_init, w_init = get_initial(bj_name), get_initial(c_team), get_initial(w_team)
-                t_base_w, t_base_l = base_TC_w + base_TW_w, base_TC_l + base_TW_l
-                c_base_w, c_base_l = base_TC_l + base_CW_w, base_TC_w + base_CW_l
-                w_base_w, w_base_l = base_TW_l + base_CW_l, base_TW_w + base_CW_w
+                total_rem = rem_T1 + rem_T2 + rem_12
+                bj_init, t1_init, t2_init = get_initial(bj_name), get_initial(team1), get_initial(team2)
+                t_base_w, t_base_l = base_T1_w + base_T2_w, base_T1_l + base_T2_l
+                t1_base_w, t1_base_l = base_T1_l + base_12_w, base_T1_w + base_12_l
+                t2_base_w, t2_base_l = base_T2_l + base_12_l, base_T2_w + base_12_w
                 
                 team_data_list = [
                     {'name': f'<span class="highlight-jays">{bj_init}</span>', 'w': t_base_w, 'l': t_base_l, 'pct': t_base_w / max(1, t_base_w + t_base_l)},
-                    {'name': c_init, 'w': c_base_w, 'l': c_base_l, 'pct': c_base_w / max(1, c_base_w + c_base_l)},
-                    {'name': w_init, 'w': w_base_w, 'l': w_base_l, 'pct': w_base_w / max(1, w_base_w + w_base_l)}
+                    {'name': t1_init, 'w': t1_base_w, 'l': t1_base_l, 'pct': t1_base_w / max(1, t1_base_w + t1_base_l)},
+                    {'name': t2_init, 'w': t2_base_w, 'l': t2_base_l, 'pct': t2_base_w / max(1, t2_base_w + t2_base_l)}
                 ]
                 team_data_list.sort(key=lambda x: (x['pct'], x['w']), reverse=True)
                 
@@ -316,23 +320,23 @@ def get_data_dict():
                 elif can_lose and not can_win:
                     locked, advantage = True, "No"
                 else:
-                    advantage = "No" if (t_base_w / max(1, t_base_w + t_base_l)) < (c_base_w / max(1, c_base_w + c_base_l)) else "Yes"
+                    advantage = "No" if (t_base_w / max(1, t_base_w + t_base_l)) < (t1_base_w / max(1, t1_base_w + t1_base_l)) else "Yes"
 
                 t_pct = t_base_w / max(1, t_base_w + t_base_l)
-                c_pct = c_base_w / max(1, c_base_w + c_base_l)
-                w_pct = w_base_w / max(1, w_base_w + w_base_l)
-                max_pct = max(t_pct, c_pct, w_pct)
+                t1_pct = t1_base_w / max(1, t1_base_w + t1_base_l)
+                t2_pct = t2_base_w / max(1, t2_base_w + t2_base_l)
+                max_pct = max(t_pct, t1_pct, t2_pct)
                 
                 curr_leaders = []
                 if abs(t_pct - max_pct) < 0.001: curr_leaders.append('T')
-                if abs(c_pct - max_pct) < 0.001: curr_leaders.append('C')
-                if abs(w_pct - max_pct) < 0.001: curr_leaders.append('W')
+                if abs(t1_pct - max_pct) < 0.001: curr_leaders.append('1')
+                if abs(t2_pct - max_pct) < 0.001: curr_leaders.append('2')
 
                 if len(curr_leaders) == 2 and 'T' in curr_leaders:
-                    if 'C' in curr_leaders or 'W' in curr_leaders: 
+                    if '1' in curr_leaders or '2' in curr_leaders: 
                         detail += " (See H2H)"
                         
-                tiebreakers_3way.append({"teams": f"Vs. {c_init} & {w_init}", "locked": locked, "advantage": advantage, "detail": detail})
+                tiebreakers_3way.append({"teams": f"Vs. {t1_init} & {t2_init}", "locked": locked, "advantage": advantage, "detail": detail})
     except:
         pass
 
@@ -486,7 +490,7 @@ HTML_TEMPLATE = """
         }
         .row-tiebreaker {
             color: #cbd5e1;
-            line-height 1.4;
+            line-height: 1.4;
         }
         .game {
             background: rgba(255, 255, 255, 0.04);
@@ -627,15 +631,15 @@ HTML_TEMPLATE = """
                     {% for tb in tiebreakers_2way %}
                     <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
                         <div class="row-tiebreaker">
-                            <strong>Vs. {{ tb.team }}: </strong>
+                            <strong>Vs. {{ tb.team }}:</strong> 
                             {% if tb.locked %}
                                 {% if tb.advantage == "Yes" %}
-                                    <span class="status-green"> 🔒 Yes </span>
+                                    <span class="status-green">🔒 Yes</span>
                                 {% else %}
-                                    <span class="status-red"> 🔒 No </span>
+                                    <span class="status-red">🔒 No</span>
                                 {% endif %}
                             {% else %}
-                                <span class="status-white"> 🤷 {{ tb.advantage }} </span>
+                                <span class="status-white">🤷 {{ tb.advantage }}</span>
                             {% endif %}
                             <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </div>                        
@@ -655,17 +659,17 @@ HTML_TEMPLATE = """
                     {% for tb in tiebreakers_3way %}
                     <div style="display: flex; flex-direction: column; gap: 2px; {% if not loop.last %}border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;{% endif %}">
                         <div class="row-tiebreaker">
-                            <strong>{{ tb.teams }}: </strong>
+                            <strong>{{ tb.teams }}:</strong> 
                             {% if tb.locked %}
                                 {% if tb.advantage == "Yes" %}
-                                    <span class="status-green"> 🔒 Yes</span>
+                                    <span class="status-green">🔒 Yes</span>
                                 {% else %}
-                                    <span class="status-red"> 🔒 No</span>
+                                    <span class="status-red">🔒 No</span>
                                 {% endif %}
                             {% else %}
-                                <span class="status-white"> 🤷 {{ tb.advantage }}</span>
+                                <span class="status-white">🤷 {{ tb.advantage }}</span>
                             {% endif %}
-                            <span class="tiebreaker-detail"> — {{ tb.detail | safe }}</span>
+                            <span class="tiebreaker-detail">— {{ tb.detail | safe }}</span>
                         </div>
                     </div>
                     {% endfor %}
