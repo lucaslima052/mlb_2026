@@ -437,18 +437,17 @@ HTML_TEMPLATE = """
             color: #38bdf8;
         }
         h2 {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             margin: 0 0 6px 0;
             color: #facc15;
-            padding-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         .layout {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            gap: 10px;
             align-items: start;
         }
         .col-extra, .col-standings, .game-category-col, .tiebreaker-col {
@@ -481,8 +480,7 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(255,255,255,0.08);
             color: #f1f5f9;
             line-height: 1.3;
-            font-size: 11px;
-            margin-bottom: 4px;
+            margin-bottom: 0px;
         }
         .favorable { color: #4ade80; font-weight: 600; }
         .unfavorable { color: #f87171; font-weight: 600; }
@@ -508,7 +506,7 @@ HTML_TEMPLATE = """
                 <h2>Division Leaders</h2>
                 {% if division_leaders %}
                     {% for d in division_leaders %}
-                    <div class="row highlight-leader" style="margin-bottom: 4px;">
+                    <div class="row highlight-leader">
                         <span>L{{ d.rank }}. {{ d.team }}</span>
                         <span>{{ d.record }} ({{ d.ga }})</span>
                     </div>
@@ -522,7 +520,7 @@ HTML_TEMPLATE = """
                 <h2>Out of Contention</h2>
                 {% if out_of_contention %}
                     {% for o in out_of_contention %}
-                    <div class="row" style="margin-bottom: 4px;">
+                    <div class="row">
                         <span>{{ o.rank }}. {{ o.team }}</span>
                         <span>{{ o.record }} ({{ o.gb }})</span>
                     </div>
@@ -540,7 +538,7 @@ HTML_TEMPLATE = """
                 <div>Standings offline</div>
             {% else %}
                 {% for t in standings %}
-                <div class="row {% if t.rank <= 3 %}top-three{% endif %} {% if t.team == 'Toronto Blue Jays' %}highlight-jays{% endif %}" style="margin-bottom: 4px;">
+                <div class="row {% if t.rank <= 3 %}top-three{% endif %} {% if t.team == 'Toronto Blue Jays' %}highlight-jays{% endif %}">
                     <span>{{ t.rank }}. {{ t.team }}</span>
                     <span>{{ t.record }} ({{ t.gb }})</span>
                 </div>
