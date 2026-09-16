@@ -201,7 +201,11 @@ def get_data_dict():
     tiebreakers_3way = []
     try:
         bj_name = "Toronto Blue Jays"
-        target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important', 'relevant'] and t != bj_name]
+        target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important'] and t != bj_name]
+
+        if "Baltimore Orioles" in team_categories and team_categories["Baltimore Orioles"] in ['critical', 'important']:
+            if "Baltimore Orioles" not in target_teams and "Baltimore Orioles" != bj_name:
+                target_teams.append("Baltimore Orioles")
         
         # --- 2-Way Tiebreakers ---
         for team in target_teams:
