@@ -203,10 +203,6 @@ def get_data_dict():
         bj_name = "Toronto Blue Jays"
         target_teams = [t for t, cat in team_categories.items() if cat in ['critical', 'important'] and t != bj_name]
 
-        if "Baltimore Orioles" in team_categories and team_categories["Baltimore Orioles"] in ['critical', 'important']:
-            if "Baltimore Orioles" not in target_teams and "Baltimore Orioles" != bj_name:
-                target_teams.append("Baltimore Orioles")
-        
         # --- 2-Way Tiebreakers ---
         for team in target_teams:
             h2h = h2h_matrix.get(bj_name, {}).get(team, {'w': 0, 'l': 0, 'rem': 0})
@@ -245,8 +241,14 @@ def get_data_dict():
                 if opp_div_rem > 0: detail += f" ({opp_div_rem} rem)"
             else:
                 locked = False
-                if bj_w == bj_l and rem > 0: 
+                # FIX: Explicitly handle advantage when games are remaining but the record isn't tied
+                if bj_w > bj_l:
+                    advantage = "Yes"
+                elif bj_l > bj_w:
+                    advantage = "No"
+                else:
                     advantage = "Yes" if bj_div_w > opp_div_w else "No" if opp_div_w > bj_div_w else "Tied"
+                    
                 detail = f"{bj_w}-{bj_l} ({rem} rem), intradiv. {bj_div_w}-{bj_div_l}"
                 if bj_div_rem > 0: detail += f" ({bj_div_rem} rem)"
                 detail += f" vs. {opp_div_w}-{opp_div_l}"
